@@ -26,7 +26,7 @@ function Save-ServicePrincipalData {
 
         # build file name
         $FileName = "${DomainName}_serviceprincipals.csv"
-        $FilePath = Join-Path -Path $ModulePath -ChildPath "\client_servicePrincipals\${FileName}"
+        $FilePath = Join-Path -Path $ModulePath -ChildPath "\known_servicePrincipals\${FileName}"
 
         # import file, if it exists
         $ResolveParams = @{
