@@ -109,14 +109,14 @@ function Start-IncidentResponsePlaybook {
                     $ScriptUserObjects
                 )
             }
-            # Show-UserApplications
+            # Get-UserApplications
             @{  Script = {
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Show-UserApplications -UserObjects $RunspaceUserObjects 
+                    Get-UserApplications -UserObjects $RunspaceUserObjects 
                 }
                 Args  = @(
                     $WorkingPath,
@@ -266,7 +266,7 @@ function Start-IncidentResponsePlaybook {
                 Get-IRTMessageTrace -UserObjects $ScriptUserObjects # uses Get-MessageTraceV2
             }
             catch {
-                Get-IRTMessageTraceOld -UserObjects $ScriptUserObjects # uses Get-MessageTrace
+                Get-IRTMessageTraceV1 -UserObjects $ScriptUserObjects # uses Get-MessageTrace
             }
 
             # download specific UAL over longer period
@@ -280,7 +280,7 @@ function Start-IncidentResponsePlaybook {
                 Get-IRTMessageTrace -AllUsers
             }
             catch {
-                Get-IRTMessageTraceOld -AllUsers
+                Get-IRTMessageTraceV1 -AllUsers
             }
 
             ### wait for completion, collect errors

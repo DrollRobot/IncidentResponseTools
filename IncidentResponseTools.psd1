@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.4.1'
+    ModuleVersion     = '2.4.2'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -72,18 +72,20 @@
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules     = @(
-        'exchange\Get-IRTMessageTraceOld.ps1'
+        'exchange\Get-IRTMessageTraceV1.ps1'
         'exchange\Get-MessageTraceWithPaging.ps1'
         'exchange\Get-ExchangeUAAppLogs.ps1'
         'exchange\Get-SpecificUALogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
+        'exchange\Get-IRTMessageTrace_OLD.ps1'
         'exchange\Get-IRTInboxRules.ps1'
         'exchange\Grant-MailboxFullAccess.ps1'
         'exchange\Remove-MailboxFullAccess.ps1'
         'exchange\Request-IRTMessageTrace.ps1'
         'exchange\Merge-SortedArraysOnDate.ps1'
         'exchange\Open-MailboxInOWA.ps1'
+        'exchange\Show-IRTMessageTrace.ps1'
         'exchange\Show-Mailbox.ps1'
         'exchange\Show-MailboxAccess.ps1'
         'exchange\Show-UALogs.ps1'
@@ -161,12 +163,14 @@
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
-        'Get-IRTMessageTraceOld'
+        'Get-IRTMessageTrace_OLD'
+        'Get-IRTMessageTraceV1'
         'Get-IRTInboxRules'
         'Get-UserUALogs'
         'Grant-MailboxFullAccess'
         'Remove-MailboxFullAccess'
         'Open-MailboxInOWA'
+        'Show-IRTMessageTrace'
         'Show-Mailbox'
         'Show-MailboxAccess'
         'Show-UALogs'
@@ -250,7 +254,7 @@
         'SpecificUALogs'
         # Get-IRTMessageTrace
         'MessageTrace'
-        # Get-IRTMessageTraceOld
+        # Get-IRTMessageTraceV1
         'MessageTraceOLD'
         # Get-IRTInboxRules
         'InboxRule'
