@@ -109,14 +109,14 @@ function Start-IncidentResponsePlaybook {
                     $ScriptUserObjects
                 )
             }
-            # 
+            # Show-UserApplications
             @{  Script = {
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                     -UserObjects $RunspaceUserObjects 
+                    Show-UserApplications -UserObjects $RunspaceUserObjects 
                 }
                 Args  = @(
                     $WorkingPath,
@@ -259,7 +259,7 @@ function Start-IncidentResponsePlaybook {
             Show-Mailbox -UserObjects $ScriptUserObjects
 
             # download email rules
-            Get-UserInboxRules -UserObjects $ScriptUserObjects
+            Get-IRTInboxRules -UserObjects $ScriptUserObjects
 
             # download 10 day message trace
             try {

@@ -114,14 +114,14 @@ function Start-IncidentResponsePlaybookNEW {
                     $ScriptUserObjects
                 )
             }
-            # 
+            # Show-UserApplications
             @{  Script = {
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                     -UserObjects $RunspaceUserObjects 
+                    Show-UserApplications -UserObjects $RunspaceUserObjects 
                 }
                 Args  = @(
                     $WorkingPath,
@@ -214,7 +214,7 @@ function Start-IncidentResponsePlaybookNEW {
                     $ScriptUserObjects
                 )
             }
-            # Get-UserInboxRules
+            # Get-IRTInboxRules
             @{  Script = { 
                     param( 
                         $WorkingPath,
@@ -223,7 +223,7 @@ function Start-IncidentResponsePlaybookNEW {
                     )
                     Set-Location -Path $WorkingPath
                     Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
-                    Get-UserInboxRules -UserObjects $RunspaceUserObjects
+                    Get-IRTInboxRules -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
                     $WorkingPath,

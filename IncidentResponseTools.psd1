@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.3.0'
+    ModuleVersion     = '2.4.1'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -78,7 +78,7 @@
         'exchange\Get-SpecificUALogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
-        'exchange\Get-UserInboxRules.ps1'
+        'exchange\Get-IRTInboxRules.ps1'
         'exchange\Grant-MailboxFullAccess.ps1'
         'exchange\Remove-MailboxFullAccess.ps1'
         'exchange\Request-IRTMessageTrace.ps1'
@@ -102,8 +102,6 @@
         'graph_applications\Compare-ServicePrincipals.ps1'
         'graph_applications\Find-RogueApps.ps1'
         'graph_applications\Get-UserApplications.ps1'
-        'graph_applications\Save-AllAppData.ps1'
-        'graph_applications\Save-ApplicationData.ps1'
         'graph_applications\Save-ServicePrincipalData.ps1'
         'graph_applications\Show-Applications.ps1'
 
@@ -164,7 +162,7 @@
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
         'Get-IRTMessageTraceOld'
-        'Get-UserInboxRules'
+        'Get-IRTInboxRules'
         'Get-UserUALogs'
         'Grant-MailboxFullAccess'
         'Remove-MailboxFullAccess'
@@ -185,8 +183,6 @@
         'Compare-ServicePrincipals'
         'Find-RogueApps'
         'Get-UserApplications'
-        'Save-AllAppData'
-        'Save-ApplicationData'
         'Save-ServicePrincipalData'
         'Show-Applications'
         'Get-UserApplications'
@@ -256,8 +252,10 @@
         'MessageTrace'
         # Get-IRTMessageTraceOld
         'MessageTraceOLD'
-        # Get-UserInboxRules
+        # Get-IRTInboxRules
+        'InboxRule'
         'InboxRules'
+        'Get-IRTInboxRules'
         # Grant-SelfFullAccess
         'FullAccess'
         'RemoveFullAccess'

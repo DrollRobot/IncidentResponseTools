@@ -110,6 +110,15 @@ function Show-SignInLogs {
             }
             $CustomObject | Add-Member @AddParams
 
+            # Raw
+            $Raw = $Log | ConvertTo-Json -Depth 10
+            $AddParams = @{
+                MemberType = 'NoteProperty'
+                Name       = 'Raw'
+                Value      = $Raw
+            }
+            $CustomObject | Add-Member @AddParams
+
             # user
             $AddParams = @{
                 MemberType = 'NoteProperty'
@@ -191,13 +200,13 @@ function Show-SignInLogs {
             # compress trust
             $Trust = switch ( $Log.DeviceDetail.TrustType ) {
                 'Hybrid Azure AD joined' {
-                    'Hybrid Joined'
+                    'Hybrid'
                 }
                 'Azure AD joined' {
-                    'Azure Joined'
+                    'Az Joined'
                 }
                 'Azure AD registered' {
-                    'Azure Registered'
+                    'Az Registered'
                 }
                 default {
                     $Log.DeviceDetail.TrustType
@@ -229,7 +238,7 @@ function Show-SignInLogs {
             # UserAgent (raw value)
             $AddParams = @{
                 MemberType = 'NoteProperty'
-                Name       = 'FullUserAgent'
+                Name       = 'UserAgent'
                 Value      = $Log.UserAgent
             }
             $CustomObject | Add-Member @AddParams
@@ -361,8 +370,12 @@ function Show-SignInLogs {
         # resize DateTime column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id
         $Worksheet.Column($Column).Width = 25
+
+        # resize Raw column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
+        $Worksheet.Column($Column).Width = 8
         
-        # resize Country column
+        # resize Co column (Country)
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Co' } ).Id
         $Worksheet.Column($Column).Width = 6
 

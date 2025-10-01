@@ -207,7 +207,6 @@ function Get-IRTMessageTrace {
                     ResultLimit = $ResultLimit
                 }
                 $MessageTrace = Request-IRTMessageTrace @Params
-                # $MessageTrace | Export-CliXml -Path MessageTrace_TESTING.xml
             }
 
             #region ROW LOOP
@@ -231,7 +230,7 @@ function Get-IRTMessageTrace {
                     Name       = 'Raw'
                     Value      = $Raw
                 }
-                $CustomObject | Add-Member @AddParams
+                $Message | Add-Member @AddParams
             }
 
             # export raw data
@@ -337,13 +336,13 @@ function Get-IRTMessageTrace {
 
             #region FORMATTING
             
-            # set text wrapping in description column
-            $WrappingParams = @{
-                Worksheet = $Worksheet
-                Range     = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
-                WrapText  = $true
-            }
-            Set-ExcelRange @WrappingParams
+            # # set text wrapping in description column
+            # $WrappingParams = @{
+            #     Worksheet = $Worksheet
+            #     Range     = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
+            #     WrapText  = $true
+            # }
+            # Set-ExcelRange @WrappingParams
 
             # set row height
             for ( $i = $TableStartRow; $i -le $EndRow; $i++ ) {  
