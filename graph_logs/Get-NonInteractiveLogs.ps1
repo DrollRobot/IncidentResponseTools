@@ -6,7 +6,7 @@ New-Alias -Name 'Get-NonInteractiveLog' -Value 'Get-NonInteractiveLogs' -Force
 function Get-NonInteractiveLogs {
 	<#
 	.SYNOPSIS
-	
+	A wrapper for Get-UserSignInLogs.
 	
 	.NOTES
 	Version: 1.0.0
@@ -17,10 +17,11 @@ function Get-NonInteractiveLogs {
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
 
-        [int] $Days,
-        [switch] $Beta,
-        [switch] $Script,
-        [boolean] $Open
+        [int] $Days = 30,
+        [boolean] $Beta = $true,
+        [boolean] $Xml = $true,
+        [boolean] $Script = $false,
+        [boolean] $Open = $true
     )
 
     begin {
@@ -30,6 +31,7 @@ function Get-NonInteractiveLogs {
             UserObjects = $UserObjects
             NonInteractive = $true
             Days = $Days
+            Xml = $Xml
             Beta = $Beta
             Open = $Open
         }

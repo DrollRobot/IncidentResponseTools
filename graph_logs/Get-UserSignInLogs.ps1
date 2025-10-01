@@ -19,19 +19,18 @@ function Get-UserSignInLogs {
 
         # [string[]] $IpAddresses, # add option to search by ip address FIXME
 
-        [int] $Days = 30, # api bug related to filters
+        [int] $Days = 30, # FIXME defaulting to 30 days because of api bug related to filters
         # https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3146#issuecomment-2752675332
         [switch] $NonInteractive,
-        [switch] $DeviceCode, # not working? might relate to api bug? FIXME
+        [switch] $DeviceCode, # FIXME not working? might relate to api bug? 
 
         [boolean] $Beta = $true,
         [boolean] $Xml = $true,
-        [switch] $Script,
+        [boolean] $Script = $false,
         [boolean] $Open = $true
     )
 
     begin {
-
 
         # if user objects not passed directly, find global
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
@@ -52,7 +51,7 @@ function Get-UserSignInLogs {
         $XmlPaths = [System.Collections.Generic.List[string]]::new()
 
         # if ( $NonInteractive -and $Days -eq 30) { # if script default, change to 3 days
-        #     $Days = 3 # FIXME temporarily commending out until graph issue is fixed
+        #     $Days = 3 # FIXME temporarily commending out until api issue is fixed
         # }
 
         # get datetime for query

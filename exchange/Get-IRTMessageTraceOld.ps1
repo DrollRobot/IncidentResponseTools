@@ -287,19 +287,49 @@ function Get-IRTMessageTraceOld {
             $SenderColumn = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'SenderAddress' } ).Id | Convert-DecimalToExcelColumn
             $RecipientColumn = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'RecipientAddress' } ).Id | Convert-DecimalToExcelColumn
 
-            #region CELL COLORING
+            #region SAME TO/FROM
+            # highlight where sender and recipient are the same
+            $SenderColumn = ( $Worksheet.Tables[0].Columns | 
+                Where-Object { $_.Name -eq 'SenderAddress' } ).Id | 
+                Convert-DecimalToExcelColumn
+            $RecipientColumn = ( $Worksheet.Tables[0].Columns | 
+                Where-Object { $_.Name -eq 'RecipientAddress' } ).Id | 
+                Convert-DecimalToExcelColumn
 
-            if ( -not $AllUsers ) {
+            for ($Row = $TableStartRow; $Row -le $EndRow; $Row++) {
 
-                # conditional formatting to highlight user email address
-                $CFParams = @{
-                    Worksheet       = $WorkSheet
-                    Address         = "${SenderColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
-                    RuleType        = 'ContainsText'
-                    ConditionValue  = $UserEmail
-                    BackgroundColor = 'LightBlue'
+                $SenderAddress = $Worksheet.Cells[$SenderColumn + $Row].Text
+                $RecipientAddress = $Worksheet.Cells[$RecipientColumn + $Row].Text
+
+                # highlight where sender and recipient are the same
+                if ($SenderAddress -eq $RecipientAddress) {
+                    $ColorParams = @{
+                        Worksheet = $Worksheet
+                        Range = $SenderColumn + $Row + ":" + $RecipientColumn + $Row
+                        BackgroundColor = 'LightPink'
+                    }
+                    Set-ExcelRange @ColorParams
                 }
-                Add-ConditionalFormatting @CFParams
+
+                # bold user email, if not -AllUsers
+                if ( $ScriptUserObject.UserPrincipalName ) {
+                    if ( $SenderAddress -ne $ScriptUserObject.UserPrincipalName ) {
+                        $BoldParams = @{
+                            Worksheet = $Worksheet
+                            Range = $SenderColumn + $Row
+                            Bold = $true
+                        }
+                        Set-ExcelRange @BoldParams
+                    }
+                    if ( $RecipientAddress -ne $ScriptUserObject.UserPrincipalName ) {
+                        $BoldParams = @{
+                            Worksheet = $Worksheet
+                            Range = $RecipientColumn + $Row
+                            Bold = $true
+                        }
+                        Set-ExcelRange @BoldParams
+                    }
+                }
             }
 
             #region COLUMN WIDTH
@@ -318,13 +348,13 @@ function Get-IRTMessageTraceOld {
 
             #region FORMATTING
 
-            # set text wrapping in description column
-            $WrappingParams = @{
-                Worksheet = $Worksheet
-                Range     = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
-                WrapText  = $true
-            }
-            Set-ExcelRange @WrappingParams
+            # # set text wrapping in description column
+            # $WrappingParams = @{
+            #     Worksheet = $Worksheet
+            #     Range     = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
+            #     WrapText  = $true
+            # }
+            # Set-ExcelRange @WrappingParams
 
             # set row height
             for ( $i = $TableStartRow; $i -le $EndRow; $i++ ) {  
