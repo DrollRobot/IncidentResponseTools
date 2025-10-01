@@ -114,14 +114,14 @@ function Start-IncidentResponsePlaybookNEW {
                     $ScriptUserObjects
                 )
             }
-            # Show-UserApplications
+            # Get-UserApplications
             @{  Script = {
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Show-UserApplications -UserObjects $RunspaceUserObjects 
+                    Get-UserApplications -UserObjects $RunspaceUserObjects 
                 }
                 Args  = @(
                     $WorkingPath,
@@ -205,7 +205,7 @@ function Start-IncidentResponsePlaybookNEW {
                         Get-IRTMessageTrace -UserObjects $RunspaceUserObjects # uses Get-MessageTraceV2
                     }
                     catch {
-                        Get-IRTMessageTraceOld -UserObjects $RunspaceUserObjects # uses Get-MessageTrace
+                        Get-IRTMessageTraceV1 -UserObjects $RunspaceUserObjects # uses Get-MessageTrace
                     }
                 }
                 Args  = @(
@@ -303,7 +303,7 @@ function Start-IncidentResponsePlaybookNEW {
                         Get-IRTMessageTrace -AllUsers
                     }
                     catch {
-                        Get-IRTMessageTraceOld -AllUsers
+                        Get-IRTMessageTraceV1 -AllUsers
                     }
                 } 
                 Args  = @(
