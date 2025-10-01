@@ -10,50 +10,27 @@ function Show-UALogs {
     [CmdletBinding(DefaultParameterSetName='Objects')]
     param (
 	    [Parameter(Position=0, Mandatory, ParameterSetName='Objects')]
-        [psobject] $Logs, 
-	    [Parameter(Mandatory, ParameterSetName='Objects')]
-        [string] $DomainName, 
-	    [Parameter(Mandatory, ParameterSetName='Objects')]
-        [string] $UserName, 
-        [Parameter(Mandatory, ParameterSetName='Objects')]
-        [int] $Days, 
-	    [Parameter(Mandatory, ParameterSetName='Objects')]
-        [datetime] $EndDate,
-	    [Parameter(ParameterSetName='Objects')]
-        [string] $OperationString, 
+        [System.Collections.Generic.List[PSObject]] $Logs,
 
         [Parameter(Position=0, Mandatory, ParameterSetName='Xml')]
         [string] $XmlPath,
 
         [string] $TableStyle = 'Dark8',
         [boolean] $Xml = $true,
-        [boolean] $Open = $true
+        [boolean] $WaitOnMessageTrace = $false
     )
 
     begin {
-        
-        # get file path
-        if ($PSCmdlet.ParameterSetName -eq 'Xml') {
 
-            $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
-            $Logs = Import-Clixml -Path $ResolvedXmlPath
-        }
+        #region BEGIN
 
-        # variables
         $ModulePath = $PSScriptRoot
-        $OutputTable = [System.Collections.Generic.List[PSCustomObject]]::new()
-        $LogCount = ($Logs | Measure-Object).Count
-
-        # $Groups = Request-GraphGroups
-        # $Roles = Request-DirectoryRoles
-        # $RoleTemplates = Request-DirectoryRoleTemplates
-        # $ServicePrincipals = Request-GraphServicePrincipals
-        # $Users = Request-GraphUsers
-
-        # event date formatting
+        $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
         $RawDateProperty = 'CreationDate'
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $TitleDateFormat = "M/d/yy h:mmtt"
         $DateColumnHeader = 'DateTime'
-
         $DisplayProperties = @(
             'Index'
             $DateColumnHeader
@@ -65,66 +42,64 @@ function Show-UALogs {
             'OperationFriendlyName'
             'Summary'
         )
-
-        # import all operations csv
-        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath '\unified_audit_log-data\unified_audit_log-all_operations.csv'
-        $OperationsData = Import-Csv -Path $OperationsCsvPath
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Green = @{ ForegroundColor = 'Green' }
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
-
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $FileNameDatePattern = "\d{2}-\d{2}-\d{2}_\d{2}-\d{2}"
-        $TitleDateFormat = "M/d/yy h:mmtt"
-
-        if ($PSCmdlet.ParameterSetName -eq 'Objects') {
-
-            # build new file name
-            if ([string]::IsNullOrWhiteSpace($OperationString)) {
-                $OperationString = 'UnifiedAuditLogs'
+        
+        # import from xml
+        if ($ParameterSet -eq 'Xml') {
+            try {
+                $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
+                [System.Collections.Generic.List[PSObject]]$Logs = Import-CliXml -Path $ResolvedXmlPath
             }
-            else {
-                $OperationString = "${OperationString}_UAL"
+            catch {
+                $_
+                Write-Host @Red "${Function}: Error importing from ${XmlPath}."
+                return
             }
-            $FileEndDate = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
-            $ExcelOutputPath =  "${OperationString}_${Days}Days_${DomainName}_${UserName}_${FileEndDate}.xlsx"
-
-            # build worksheet title
-            $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
-            $TitleStartDate = $EndDate.AddDays($Days * -1).ToLocalTime().ToString($TitleDateFormat)
-            $WorksheetTitle = "Unified audit logs for ${UserName}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
         }
 
-        if ($PSCmdlet.ParameterSetName -eq 'Xml') {
+        # import all operations csv
+        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath '\unified_audit_log-data\unified_audit_log-all_operations.csv'
+        $OperationsData = Import-Csv -Path $OperationsCsvPath
 
-            # build new file name out of old one
-            $OldFileName = Split-Path -Path $ResolvedXmlPath -Leaf
-            $SplitFileName = $OldFileName -split '_'
-            $SplitFileName = $SplitFileName | Where-Object { $_ -ne 'Raw' }
-            $TargetString = $SplitFileName[3]
-            $SplitFileName = $SplitFileName -replace '\.xml', '.xlsx'
-            $ExcelOutputPath = $SplitFileName -join '_'
+        # $Groups = Request-GraphGroups
+        # $Roles = Request-DirectoryRoles
+        # $RoleTemplates = Request-DirectoryRoleTemplates
+        # $ServicePrincipals = Request-GraphServicePrincipals
+        # $Users = Request-GraphUsers
 
-            ### build worksheet title
-            # get number of days
-            $ExcelOutputPath -match "(\d{1,3})Days" | Out-Null
-            $Days = $Matches[1]
-            # get date range
-            $QueryDateString = $ExcelOutputPath | Select-String -Pattern $FileNameDatePattern -AllMatches | ForEach-Object { $_.Matches.Value }
-            $ParsedDate = [DateTime]::ParseExact( $QueryDateString, $FileNameDateFormat, $null )
-            $StartString = $ParsedDate.AddDays([int]$Days * -1).ToString( $TitleDateFormat ).ToLower()
-            $EndString = $ParsedDate.ToString( $TitleDateFormat ).ToLower()
-            # get username
-            if ( $TargetString -eq 'AllLogs' ) {
-                # if all logs, use domain as target
-                $TargetString = $SplitFileName[2]
-            }
-            # build worksheet title
-            $WorksheetTitle = "Unified audit logs for ${TargetString}. Covers ${Days} days, ${StartString} to ${EndString}."
+        # import metadata
+        if ($Logs[0].Metadata) {
+
+            # remove metadata from beginning of list
+            $Metadata = $Logs[0]
+            $Logs.RemoveAt(0)
+
+            $UserEmail = $Metadata.UserEmail
+            $UserName = $Metadata.UserName
+            $StartDate = $Metadata.StartDate
+            $EndDate = $Metadata.EndDate
+            $Days = $Metadata.Days
+            # $Domain = $Metadata.Domain
+            $FileNamePrefix = $Metadata.FileNamePrefix
         }
+        else {
+            Write-Host @Red "${Function}: No Metadata found."
+        }
+
+        # build file name
+        $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
+        $ExcelOutputPath =  "${FileNamePrefix}_${Days}Days_${UserName}_${FileDateString}.xlsx"
+
+        # build worksheet title
+        $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
+        $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
+        $WorksheetTitle = "Unified audit logs for ${UserEmail}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
     }
 
     process {
@@ -137,12 +112,10 @@ function Show-UALogs {
         #region ROW LOOP
 
         # process each log
-        for ($i = 0; $i -lt $LogCount; $i++) { 
+        for ($i = 0; $i -lt ($Logs | Measure-Object).Count; $i++) { 
         
             $Log = $Logs[$i]
-            $CustomObject = [PSCustomObject]@{
-                Index = $i
-            }
+            $Row = [PSCustomObject]@{}
 
             # extract auditdata
             $AuditData = $Log.AuditData # FIXME transition to using original log object converted from json
@@ -153,17 +126,16 @@ function Show-UALogs {
                 Name        = $DateColumnHeader
                 Value       = Format-EventDateString $Log.$RawDateProperty
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # Raw
-            # convert audit data to ps format
             $Raw = $Log | ConvertTo-Json -Depth 10
             $AddParams = @{
                 MemberType = 'NoteProperty'
                 Name       = 'Raw'
                 Value      = $Raw
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # Tree
             # $AddParams = @{
@@ -171,9 +143,10 @@ function Show-UALogs {
             #     Name       = 'Tree'
             #     Value      = $Log | Format-Tree -Depth 10 | Out-String # need to figure out how to output to pipeline, not host
             # }
-            # $CustomObject | Add-Member @AddParams
+            # $Row | Add-Member @AddParams
 
-            # UserIds # needs to see if this works consistently across multipe log types
+            #region USERIDS
+            # need to see if this works consistently across multiple log types
             if ( $Log.UserIds -match '^ServicePrincipal_.*$' ) {
                 $SpName = $AuditData.Actor[0].ID
                 $UserIds = "SP: ${SpName}"
@@ -186,7 +159,15 @@ function Show-UALogs {
                 Name       = 'UserIds'
                 Value      = $UserIds
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
+
+            # Workload
+            $AddParams = @{
+                MemberType = 'NoteProperty'
+                Name       = 'Workload'
+                Value      = $Log.Workload
+            }
+            $Row | Add-Member @AddParams
 
             # RecordType
             $AddParams = @{
@@ -194,16 +175,16 @@ function Show-UALogs {
                 Name       = 'RecordType'
                 Value      = $Log.RecordType
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
-            #region OPERATION
+            #region OPERATION NAME
             # find operation friendly name
-            $Row = $OperationsData | Where-Object { $_.Operation -eq $Log.Operations }
-            $OperationFriendlyName = if (-not [string]::IsNullOrWhiteSpace($Row.CustomDescription)) {
-                $Row.CustomDescription
+            $OperationsRow = $OperationsData | Where-Object { $_.Operation -eq $Log.Operations }
+            $OperationFriendlyName = if (-not [string]::IsNullOrWhiteSpace($OperationsRow.CustomDescription)) {
+                $OperationsRow.CustomDescription
             }
-            elseif (-not [string]::IsNullOrWhiteSpace($Row.FriendlyName)) {
-                $Row.FriendlyName
+            elseif (-not [string]::IsNullOrWhiteSpace($OperationsRow.FriendlyName)) {
+                $OperationsRow.FriendlyName
             }
             else {
                 $Log.Operations
@@ -213,7 +194,7 @@ function Show-UALogs {
                 Name       = 'OperationFriendlyName'
                 Value      = $OperationFriendlyName
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             #region IP ADDRESSES
             $IpAddresses = [System.Collections.Generic.Hashset[string]]::new()
@@ -232,49 +213,55 @@ function Show-UALogs {
                 Name       = 'IpAddresses'
                 Value      = $IpString
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # process log type
             $RecordType = $Log.RecordType
             $Operations = $Log.Operations
             $OperationString = $RecordType + ' ' + $Operations
-            $ResolveParams = @{
+
+            $OldParams = @{ # FIXME Update so separate auditdata isn't required.
                 Log = $Log
                 AuditData = $AuditData
             }
+            $EmailParams = @{
+                Log = $Log
+                WaitOnMessageTrace = $WaitOnMessageTrace
+                UserName = $UserName
+            }
             switch ( $OperationString ) {
                 'AzureActiveDirectory Update user.' {
-                    $EventObject = Resolve-AzureActiveDirectoryUpdateUser @ResolveParams
+                    $EventObject = Resolve-AzureActiveDirectoryUpdateUser @OldParams
                 }
                 'ExchangeAdmin Set-ConditionalAccessPolicy' {
-                    $EventObject = Resolve-ExchangeAdminSetConditionalAccessPolicy @ResolveParams
+                    $EventObject = Resolve-ExchangeAdminSetConditionalAccessPolicy @OldParams
                 }
                 'ExchangeItemAggregated AttachmentAccess' {
-                    $EventObject = Resolve-ExchangeItemAggregatedAttachmentAccess @ResolveParams
+                    $EventObject = Resolve-ExchangeItemAggregatedAttachmentAccess @OldParams
                 }
                 'ExchangeItemAggregated MailItemsAccessed' {
-                    $EventObject = Resolve-ExchangeItemAggregatedMailItemsAccessed @ResolveParams
+                    $EventObject = Resolve-ExchangeItemAggregatedMailItemsAccessed @EmailParams
                 }
                 'ExchangeItem Create' {
-                    $EventObject = Resolve-ExchangeItemSubject @ResolveParams
+                    $EventObject = Resolve-ExchangeItemSubject @OldParams
                 }
                 'ExchangeItem Send' {
-                    $EventObject = Resolve-ExchangeItemSubject @ResolveParams
+                    $EventObject = Resolve-ExchangeItemSubject @OldParams
                 }
                 'ExchangeItem Update' {
-                    $EventObject = Resolve-ExchangeItemUpdate @ResolveParams
+                    $EventObject = Resolve-ExchangeItemUpdate @OldParams
                 }
                 'ExchangeItemGroup HardDelete' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @ResolveParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
                 }
                 'ExchangeItemGroup MoveToDeletedItems' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @ResolveParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
                 }
                 'ExchangeItemGroup SoftDelete' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @ResolveParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
                 }
                 'SharePoint SearchQueryPerformed' {
-                    $EventObject = Resolve-SharePointSearchQueryPerformed @ResolveParams
+                    $EventObject = Resolve-SharePointSearchQueryPerformed @OldParams
                 }
                 'SharePointFileOperation FileAccessed' {
                     $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
@@ -286,7 +273,7 @@ function Show-UALogs {
                     $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
                 }
                 'SharePoint PageViewed' {
-                    $EventObject = Resolve-SharePointPageViewed @ResolveParams
+                    $EventObject = Resolve-SharePointPageViewed @OldParams
                 }
                 default {
                     $EventObject = [pscustomobject]@{
@@ -299,14 +286,14 @@ function Show-UALogs {
                 Name       = 'Summary'
                 Value      = $EventObject.Summary
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # add to list
-            $OutputTable.Add( $CustomObject )
+            $Rows.Add($Row)
         }
 
         # select just relevant properties and set column order
-        $OutputTable = $OutputTable | Select-Object $DisplayProperties
+        $Rows = $Rows | Select-Object $DisplayProperties
 
         #region EXPORT SPREADSHEET
         # export spreadsheet
@@ -321,13 +308,13 @@ function Show-UALogs {
             Passthru      = $true
         }
         try {
-            $Workbook = $OutputTable | Export-Excel @ExcelParams
+            $Workbook = $Rows | Export-Excel @ExcelParams
         }
         catch {
             Write-Error "Unable to open new Excel document."
             if ( Get-YesNo "Try closing open files." ) {
                 try {
-                    $Workbook = $OutputTable | Export-Excel @ExcelParams
+                    $Workbook = $Rows | Export-Excel @ExcelParams
                 }
                 catch {
                     throw "Unable to open new Excel document. Exiting."
@@ -487,13 +474,7 @@ function Show-UALogs {
         #region OUTPUT
                     
         # save and close
-        Write-Host @Blue "Exporting to: ${ExcelOutputPath}"
-        if ( $Open ) {
-            Write-Host @Blue "Opening Excel."
-            $Workbook | Close-ExcelPackage -Show
-        }
-        else {
-            $Workbook | Close-ExcelPackage
-        }
+        Write-Host @Blue "${Function}: Exporting to: ${ExcelOutputPath}"
+        $Workbook | Close-ExcelPackage -Show
     }
 }

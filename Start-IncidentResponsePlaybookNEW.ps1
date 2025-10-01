@@ -269,7 +269,11 @@ function Start-IncidentResponsePlaybookNEW {
                     )
                     Set-Location -Path $WorkingPath
                     Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
-                    Get-UserUALogs -UserObjects $RunspaceUserObjects
+                    $UAParams = @{
+                        UserObjects = $RunspaceUserObjects
+                        WaitOnMessageTrace = $true
+                    }
+                    Get-UserUALogs @UAParams
                 }
                 Args  = @(
                     $WorkingPath,

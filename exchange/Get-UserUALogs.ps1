@@ -10,7 +10,8 @@ function Get-UserUALogs {
     Runs multiple queries to pull all unified audit logs records related to a specific user.
     
 	.NOTES
-	Version: 1.3.0
+	Version: 1.4.0
+    1.4.0 - Updating to add metadata object, use shorter file names.
     1.3.0 - Updated to output objects.
 	#>
     [CmdletBinding()]
@@ -18,27 +19,48 @@ function Get-UserUALogs {
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
-
         [int] $Days = 1,
+
+        [boolean] $WaitOnMessageTrace = $false,
+
         [boolean] $Xml = $true,
-        [boolean] $Open = $true
+        [boolean] $Excel = $true
     )
 
     begin {
 
-        # if user objects not passed directly, find global
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
+        #region BEGIN
 
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $AllLogs = [System.Collections.Generic.List[psobject]]::new()
+        $FileNameDateFormat = 'yy-MM-dd_HH-mm'
+        $FileNameDateString = (Get-Date).ToString($FileNameDateFormat)
+        $FileNamePrefix = 'UnifiedAuditLogs'
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        $Red = @{ ForegroundColor = 'Red' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
+        # $Yellow = @{ ForegroundColor = 'Yellow' }
+
+        # if passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
             # get from global variables
             $ScriptUserObjects = Get-GraphGlobalUserObjects
-                
+            
             # if none found, exit
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
             }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
         }
 
         # verify connected to exchange
@@ -47,26 +69,13 @@ function Get-UserUALogs {
         }
         catch {}
         if ( -not $Domain ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
+            Write-Host @Red "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+            return
         }
-     
-        # variables
-        $AllLogs = [System.Collections.Generic.List[psobject]]::new()
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        $Red = @{ ForegroundColor = 'Red' }
-        # $Cyan = @{ ForegroundColor = 'Cyan' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
 
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
-        # get date/time string for filename
-        $DateString = (Get-Date).ToString($FileNameDateFormat)
     }
 
     process {
@@ -75,33 +84,34 @@ function Get-UserUALogs {
 
             $AllLogs.Clear()
 
-            $UserPrincipalName = $ScriptUserObject.UserPrincipalName
+            $UserEmail = $ScriptUserObject.UserPrincipalName
             $UserId = $ScriptUserObject.Id
             $UserIdNumbers = $UserId -replace '-', ''
-            $UserName = $UserPrincipalName -split '@' | Select-Object -First 1
-            $XmlOutputPath = "UnifiedAuditLogs_Raw_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
+            $UserName = $UserEmail -split '@' | Select-Object -First 1
+            $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
 
             # build query params
-            $EndDate = (Get-Date).ToUniversalTime()
+            $EndDateUtc = (Get-Date).ToUniversalTime()
+            $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
             $BaseParams = @{
                 ResultSize     = 5000
                 SessionCommand = 'ReturnLargeSet'
                 Formatted      = $true
-                StartDate      = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
-                EndDate        = $EndDate
+                StartDate      = $StartDateUtc
+                EndDate        = $EndDateUtc
             }
             $QueryTable = [ordered]@{
                 '1' = @{
                     Params = @{
-                        UserIds = $UserPrincipalName, $UserId, $UserIdNumbers
+                        UserIds = $UserEmail, $UserId, $UserIdNumbers
                     }
-                    Text   = "Running -UserIds query for ${UserPrincipalName}, ${UserId}, ${UserIdNumbers}"
+                    Text   = "Running -UserIds query for ${UserEmail}, ${UserId}, ${UserIdNumbers}"
                 }
                 '2' = @{
                     Params = @{
-                        FreeText = $UserPrincipalName
+                        FreeText = $UserEmail
                     }
-                    Text   = "Running -Freetext query for ${UserPrincipalName}"
+                    Text   = "Running -Freetext query for ${UserEmail}"
                 }
                 '3' = @{
                     Params = @{
@@ -197,22 +207,38 @@ function Get-UserUALogs {
             }
             $UniqueLogs.Sort($Comparison)
 
+            # add metadata to results
+
+            $UniqueLogs.Insert(0,
+                [pscustomobject]@{
+                    Metadata = $true
+                    UserObject = $ScriptUserObject
+                    UserEmail = $UserEmail
+                    UserName = $UserName
+                    StartDate = $StartDateUtc.ToLocalTime()
+                    EndDate = $EndDateUtc.ToLocalTime()
+                    Days = $Days
+                    DomainName = $DomainName
+                    FileNamePrefix = $FileNamePrefix
+                }
+            )
+
+            #region OUTPUT
+
             # export to xml
             if ($Xml) {
                 Write-Host @Blue "`nSaving logs to: ${XmlOutputPath}"
                 $UniqueLogs | Export-Clixml -Depth 10 -Path $XmlOutputPath
             }
 
-            # create spreadsheet
-            $ShowParams = @{
-                Logs = $UniqueLogs
-                DomainName = $DomainName
-                UserName = $UserName
-                Days = $Days
-                EndDate = $EndDate
-                Open = $Open
+            # export excel spreadsheet
+            if ($Excel) {
+                $Params = @{
+                    Logs = $UniqueLogs
+                    WaitOnMessageTrace = $WaitOnMessageTrace
+                }
+                Show-UALogs @Params
             }
-            Show-UALogs @ShowParams
         }
     }
 }

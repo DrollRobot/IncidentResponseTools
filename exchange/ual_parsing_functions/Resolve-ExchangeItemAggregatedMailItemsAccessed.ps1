@@ -10,27 +10,68 @@ function Resolve-ExchangeItemAggregatedMailItemsAccessed {
     param (
         [Parameter( Mandatory )]
         [psobject] $Log,
-
         [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [boolean] $WaitOnMessageTrace,
+        [Parameter( Mandatory )]
+        [string] $UserName
     )
 
     begin {
+        $Function = $MyInvocation.MyCommand.Name
+        $VariableName = "IRT_MessageTraceTable_${UserName}"
 
-        # variables
+        # colors
+        # $Blue = @{ ForegroundColor = 'Blue' }
+        # $Red = @{ ForegroundColor = 'Red' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
+        $Yellow = @{ ForegroundColor = 'Yellow' }
+
         $Summary = [System.Collections.Generic.List[string]]::new()
+
+        # check for message trace table
+
+        if ($WaitOnMessageTrace) {
+            while (-not (Test-Path "variable:global:${VariableName}")) {
+                Write-Host @Yellow "${Function}: Waiting on `$Global:${VariableName}..."
+                Start-Sleep -Seconds 15
+            }
+        }
+
+        if (Test-Path "variable:global:${VariableName}") {
+            $Params = @{
+                Name = $VariableName
+                Scope = 'Global'
+            }
+            $Table = Get-Variable @Params
+        }
+
     }
 
     process {
 
         # Folders
-        foreach ($Folder in $AuditData.Folders) {
+        foreach ($Folder in $Log.AuditData.Folders) {
 
             $Summary.Add( "Folder: $($Folder.Path)" )
+            $Items = $Folder.FolderItems
 
-            $FolderItems = $Folder.FolderItems
-            foreach ($Item in $FolderItems) {
-                $Summary.Add( "    Item: $($Item.InternetMessageId)" )
+            # Items
+            foreach ($Item in $Items) {
+                $InternetMessageId = $Item.InternetMessageId
+                if ($Table.Value) {
+                    $Trace = $Table.Value[$InternetMessageId]
+                    if ($Trace) {
+                        $Subject = $Trace.Subject
+                        $Summary.Add( "    Subject: ${Subject}" )            
+                    }
+                    else {
+                    }
+                }
+                else {
+                    $Summary.Add( "    Item: ${InternetMessageId}" )
+                }
             }
         }
 

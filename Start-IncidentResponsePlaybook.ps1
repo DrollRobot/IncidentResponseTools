@@ -262,18 +262,27 @@ function Start-IncidentResponsePlaybook {
             Get-IRTInboxRules -UserObjects $ScriptUserObjects
 
             # download 10 day message trace
+            $MTParams = @{
+                UserObjects = $ScriptUserObjects
+                Days = 90
+            }
             try {
-                Get-IRTMessageTrace -UserObjects $ScriptUserObjects # uses Get-MessageTraceV2
+                $MTParams =
+                Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
             }
             catch {
-                Get-IRTMessageTraceV1 -UserObjects $ScriptUserObjects # uses Get-MessageTrace
+                Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
             }
 
             # download specific UAL over longer period
-
+            # FIXME
 
             # download all UAL
-            Get-UserUALogs -UserObjects $ScriptUserObjects
+            $UAParams = @{
+                UserObjects = $ScriptUserObjects
+                WaitOnMessageTrace = $true
+            }
+            Get-UserUALogs @UAParams
 
             # download 10 day message trace for all users
             try {

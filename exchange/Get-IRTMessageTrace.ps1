@@ -21,7 +21,7 @@ function Get-IRTMessageTrace {
         [Parameter( ParameterSetName = 'AllUsers' )]
         [switch] $AllUsers,
 
-        [int] $Days = 90,
+        [int] $Days = 10,
         [int] $ResultLimit = 50000,
         [string] $TableStyle = 'Dark8',
         [boolean] $Variable = $true,
@@ -46,11 +46,11 @@ function Get-IRTMessageTrace {
         switch ( $ParameterSet ) {
             'UserObjects' {
                 
-                # if passed via parameter
-                if ( $UserObjects ) {
+                # if passed via script argument:
+                if (($UserObjects | Measure-Object).Count -gt 0) {
                     $ScriptUserObjects = $UserObjects
                 }
-                # if not, find global objects
+                # if not, look for global objects
                 else {
                     
                     # get from global variables
@@ -185,7 +185,7 @@ function Get-IRTMessageTrace {
                     Days = $Days
                     ResultLimit = $ResultLimit
                 }
-                $MessageTrace = Request-IRTMessageTrace @Params
+                [System.Collections.Generic.List[psobject]]$MessageTrace = Request-IRTMessageTrace @Params
             }
 
             # add metadata to results
@@ -213,10 +213,11 @@ function Get-IRTMessageTrace {
                 }
                 else {
                     # export raw message trace
-                    $VariableName = "IRT-MessageTrace-${UserName}"
+                    $VariableName = "IRT_MessageTrace_${UserName}"
                     Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
                     $VariableParams = @{
                         Name = $VariableName
+                        Value = $MessageTrace
                         Scope = 'Global'
                         Force = $True
                     }
@@ -224,16 +225,17 @@ function Get-IRTMessageTrace {
 
                     # export table by internetmessageid
                     $Table = @{}
-                    foreach ($Message in $MessageTrace) {
-                        if (-not $Message.Metadata) {
-                            $InternetMessageId = $Message.MessageId
-                            $Table[$InternetMessageId] = $Message
+                    foreach ($Trace in $MessageTrace) {
+                        if (-not $Trace.Metadata) {
+                            $InternetMessageId = $Trace.MessageId
+                            $Table[$InternetMessageId] = $Trace
                         }
                     }
-                    $VariableName = "IRT-MessageTraceTable-${UserName}"
+                    $VariableName = "IRT_MessageTraceTable_${UserName}"
                     Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
                     $VariableParams = @{
                         Name = $VariableName
+                        Value = $Table
                         Scope = 'Global'
                         Force = $True
                     }

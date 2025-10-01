@@ -34,7 +34,8 @@ function Show-IRTMessageTrace {
         # import from xml
         if ($ParameterSet -eq 'Xml') {
             try {
-                $TraceObjects = Import-CliXml -Path $XmlPath
+                $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
+                $TraceObjects = Import-CliXml -Path $ResolvedXmlPath
             }
             catch {
                 $_
@@ -43,6 +44,7 @@ function Show-IRTMessageTrace {
             }
         }
 
+        # constants
         $WorksheetName = 'MessageTrace'
         $TitleDateFormat = "M/d/yy h:mmtt"
         $RawDateProperty = 'Received'
