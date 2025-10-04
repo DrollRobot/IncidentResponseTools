@@ -30,6 +30,10 @@ function Start-IncidentResponsePlaybookNEW {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
+        if ($Test) {
+            $Global:IRTTestMode = $true
+        }
+
         # if not passed directly, find user in global variable
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
 
@@ -200,7 +204,13 @@ function Start-IncidentResponsePlaybookNEW {
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
+                    Set-Location -Path $WorkingPath
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
                     try {
                         Get-IRTMessageTrace -UserObjects $RunspaceUserObjects # uses Get-MessageTraceV2
                     }
@@ -222,7 +232,13 @@ function Start-IncidentResponsePlaybookNEW {
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
+                    Set-Location -Path $WorkingPath
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
                     Get-IRTInboxRules -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
@@ -268,7 +284,12 @@ function Start-IncidentResponsePlaybookNEW {
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
                     $UAParams = @{
                         UserObjects = $RunspaceUserObjects
                         WaitOnMessageTrace = $true
@@ -302,7 +323,12 @@ function Start-IncidentResponsePlaybookNEW {
                         $Exchange
                     )
                     Set-Location -Path $WorkingPath
-                    Connect-ExchangeOnline -AccessToken $Exchange.Token -UserPrincipalName $Exchange.UserPrincipalName -ShowBanner:$false
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
                     try {
                         Get-IRTMessageTrace -AllUsers
                     }

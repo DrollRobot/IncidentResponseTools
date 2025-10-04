@@ -69,8 +69,12 @@ function Get-UserUALogs {
         }
         catch {}
         if ( -not $Domain ) {
-            Write-Host @Red "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
-            return
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
 
         # get client domain name for file output
@@ -147,7 +151,7 @@ function Get-UserUALogs {
                     Write-Host @Blue "Retrieved ${LogCount} logs."
 
                     # add to list
-                    $Page | ForEach-Object { $AllLogs.Add( $_ ) }
+                    foreach ($i in $Page) {$AllLogs.Add($i)}
 
                     # extract sessionid for paging
                     $SessionId = $Page[0].SessionId
@@ -171,7 +175,7 @@ function Get-UserUALogs {
                         Write-Host @Blue "Retrieved ${LogCount} logs."
 
                         # add to list
-                        $Page | ForEach-Object { $AllLogs.Add( $_ ) }
+                        foreach ($i in $Page) {$AllLogs.Add($i)}
 
                         # extract sessionid for paging
                         $SessionId = $Page[0].SessionId
@@ -182,6 +186,16 @@ function Get-UserUALogs {
 
                     $PageCount++
                 }
+            }
+
+            # exit if no logs returned
+            if (($AllLogs | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidResult'
+                    Message     = "${Function}: 0 total logs retrieved. Exiting."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
             }
 
             # remove duplicates

@@ -12,12 +12,17 @@ function Show-SignInLogs {
         [string] $XmlPath,
 
         [string] $TableStyle = 'Dark8',
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
 
         #region BEGIN
+
+        if ($Test) {
+            $Global:IRTTestMode = $true
+        }
 
         # get file path
         if ( $XmlPath ) {
@@ -98,17 +103,7 @@ function Show-SignInLogs {
         for ($i = 0; $i -lt $Logs.Count; $i++) {  
         
             $Log = $Logs[$i]
-            $CustomObject = [PSCustomObject]@{
-                Index = $i
-            }
-
-            # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Log.$RawDateProperty
-            }
-            $CustomObject | Add-Member @AddParams
+            $CustomObject = [PSCustomObject]@{}
 
             # Raw
             $Raw = $Log | ConvertTo-Json -Depth 10
@@ -116,6 +111,14 @@ function Show-SignInLogs {
                 MemberType = 'NoteProperty'
                 Name       = 'Raw'
                 Value      = $Raw
+            }
+            $CustomObject | Add-Member @AddParams
+
+            # Date/Time
+            $AddParams = @{
+                MemberType  = 'NoteProperty'
+                Name        = $DateColumnHeader
+                Value       = Format-EventDateString $Log.$RawDateProperty
             }
             $CustomObject | Add-Member @AddParams
 
@@ -369,7 +372,7 @@ function Show-SignInLogs {
 
         # resize DateTime column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id
-        $Worksheet.Column($Column).Width = 25
+        $Worksheet.Column($Column).Width = 26
 
         # resize Raw column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 

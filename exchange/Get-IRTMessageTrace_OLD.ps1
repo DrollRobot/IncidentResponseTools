@@ -215,7 +215,7 @@ function Get-IRTMessageTrace_OLD {
 
                 $Message = $MessageTrace[$i]
 
-                # Date/Time
+                # DateTime
                 $AddParams = @{
                     MemberType  = 'NoteProperty'
                     Name        = $DateColumnHeader

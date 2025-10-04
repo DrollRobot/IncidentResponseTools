@@ -49,7 +49,7 @@ function Get-ExchangeUAAppLogs {
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
 
-        # get date/time string for filename
+        # get datetime string for filename
         $DateString = Get-Date -Format $FileNameDateFormat
     }
 

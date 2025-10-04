@@ -30,6 +30,10 @@ function Start-IncidentResponsePlaybook {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
+       if ($Test) {
+            $Global:IRTTestMode = $true
+        }
+
         # if not passed directly, find user in global variable
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
 

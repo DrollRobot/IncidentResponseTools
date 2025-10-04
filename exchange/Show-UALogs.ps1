@@ -17,12 +17,17 @@ function Show-UALogs {
 
         [string] $TableStyle = 'Dark8',
         [boolean] $Xml = $true,
-        [boolean] $WaitOnMessageTrace = $false
+        [boolean] $WaitOnMessageTrace = $false,
+        [switch] $Test
     )
 
     begin {
 
         #region BEGIN
+
+       if ($Test) {
+            $Global:IRTTestMode = $true
+        }
 
         $ModulePath = $PSScriptRoot
         $Function = $MyInvocation.MyCommand.Name
@@ -31,23 +36,12 @@ function Show-UALogs {
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $TitleDateFormat = "M/d/yy h:mmtt"
         $DateColumnHeader = 'DateTime'
-        $DisplayProperties = @(
-            'Index'
-            $DateColumnHeader
-            'Raw'
-            # 'Tree'
-            'UserIds'
-            'IpAddresses'
-            'RecordType'
-            'OperationFriendlyName'
-            'Summary'
-        )
         $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
+        $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         
         # import from xml
@@ -64,7 +58,8 @@ function Show-UALogs {
         }
 
         # import all operations csv
-        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath '\unified_audit_log-data\unified_audit_log-all_operations.csv'
+        $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
+        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
         $OperationsData = Import-Csv -Path $OperationsCsvPath
 
         # $Groups = Request-GraphGroups
@@ -100,6 +95,21 @@ function Show-UALogs {
         $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
         $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
         $WorksheetTitle = "Unified audit logs for ${UserEmail}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
+
+        if ($Global:IRTTestMode) {
+            # build set of operations from csv
+            $OperationsFromCsv = [System.Collections.Generic.Hashset[PSCustomObject]]::new() 
+            foreach ($Row in $OperationsData) {
+                [void]$OperationsFromCsv.Add(
+                    [PSCustomObject]@{
+                        Workload = $Row.Workload
+                        RecordType = $Row.RecordType
+                        Operation = $Row.Operation
+                    }
+                )
+            }
+           $OperationsFromLog = [System.Collections.Generic.Hashset[PSCustomObject]]::new() 
+        }
     }
 
     process {
@@ -117,16 +127,19 @@ function Show-UALogs {
             $Log = $Logs[$i]
             $Row = [PSCustomObject]@{}
 
+            # save operations to create complete list
+            if ($Global:IRTTestMode) {
+                [void]$OperationsFromLog.Add(
+                    [PSCustomObject]@{
+                        Workload = $Log.AuditData.Workload
+                        RecordType = $Log.AuditData.RecordType
+                        Operation = $Log.AuditData.Operation
+                    }
+                )
+            }
+
             # extract auditdata
             $AuditData = $Log.AuditData # FIXME transition to using original log object converted from json
-
-            # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Log.$RawDateProperty
-            }
-            $Row | Add-Member @AddParams
 
             # Raw
             $Raw = $Log | ConvertTo-Json -Depth 10
@@ -134,6 +147,14 @@ function Show-UALogs {
                 MemberType = 'NoteProperty'
                 Name       = 'Raw'
                 Value      = $Raw
+            }
+            $Row | Add-Member @AddParams
+
+            # Date/Time
+            $AddParams = @{
+                MemberType  = 'NoteProperty'
+                Name        = $DateColumnHeader
+                Value       = Format-EventDateString $Log.$RawDateProperty
             }
             $Row | Add-Member @AddParams
 
@@ -165,7 +186,7 @@ function Show-UALogs {
             $AddParams = @{
                 MemberType = 'NoteProperty'
                 Name       = 'Workload'
-                Value      = $Log.Workload
+                Value      = $Log.AuditData.Workload
             }
             $Row | Add-Member @AddParams
 
@@ -272,6 +293,12 @@ function Show-UALogs {
                 'SharePointFileOperation FileModifiedExtended' {
                     $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
                 }
+                'SharePointFileOperation FilePreviewed' {
+                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                }
+                'SharePointFileOperation FileUploaded' {
+                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                }
                 'SharePoint PageViewed' {
                     $EventObject = Resolve-SharePointPageViewed @OldParams
                 }
@@ -289,11 +316,8 @@ function Show-UALogs {
             $Row | Add-Member @AddParams
 
             # add to list
-            $Rows.Add($Row)
+            [void]$Rows.Add($Row)
         }
-
-        # select just relevant properties and set column order
-        $Rows = $Rows | Select-Object $DisplayProperties
 
         #region EXPORT SPREADSHEET
         # export spreadsheet
@@ -311,13 +335,13 @@ function Show-UALogs {
             $Workbook = $Rows | Export-Excel @ExcelParams
         }
         catch {
-            Write-Error "Unable to open new Excel document."
+            Write-Error "${Function}: Unable to open new Excel document."
             if ( Get-YesNo "Try closing open files." ) {
                 try {
                     $Workbook = $Rows | Export-Excel @ExcelParams
                 }
                 catch {
-                    throw "Unable to open new Excel document. Exiting."
+                    throw "${Function}: Unable to open new Excel document. Exiting."
                 }
             }
         }
@@ -342,6 +366,8 @@ function Show-UALogs {
             'Add application.'
             'Created new inbox rule in Outlook web app'
             'Consent to application.'
+            'Enable-InboxRule'
+            'New-InboundConnector'
             'Update application – Certificates and secrets management'
         )
         foreach ( $String in $Strings ) {
@@ -358,7 +384,6 @@ function Show-UALogs {
         # if cell CONTAINS, make background RED
         $Strings = @(
             'New inbox rule'
-            'Enable-InboxRule'
             'Modified inbox rule from Outlook web app'
         )
         foreach ( $String in $Strings ) {
@@ -404,14 +429,6 @@ function Show-UALogs {
 
         #region COLUMN WIDTH
 
-        # resize Index column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Index' } ).Id 
-        $Worksheet.Column($Column).Width = 8
-
-        # resize DateTime column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
-        $Worksheet.Column($Column).Width = 25
-
         # resize Raw column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
         $Worksheet.Column($Column).Width = 8
@@ -419,6 +436,10 @@ function Show-UALogs {
         # # resize Tree column
         # $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Tree' } ).Id 
         # $Worksheet.Column($Column).Width = 12
+
+        # resize DateTime column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
+        $Worksheet.Column($Column).Width = 26
 
         # resize UserIds column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'UserIds' } ).Id 
@@ -472,6 +493,20 @@ function Show-UALogs {
         Set-Format @BorderParams
 
         #region OUTPUT
+
+        if ($Global:IRTTestMode) {
+            $OperationsToAdd = [System.Collections.Generic.HashSet[PSCustomObject]]::new() 
+            # find operations from log that are missing in csv
+            foreach ($o in $OperationsFromLog) {
+                if ($OperationsFromCsv.Add($o)) {
+                    [void]$OperationsToAdd.Add($o)
+                }
+            }
+            Write-Host @Red "Add to ${AllOperationsFileName}:"
+            $OperationsToAdd | Format-Table | Out-Host
+            Write-Host @Red "Exporting to: operations_to_add.csv"
+            $OperationsToAdd | Export-Csv -Path "operations_to_add.csv" -NoTypeInformation
+        }
                     
         # save and close
         Write-Host @Blue "${Function}: Exporting to: ${ExcelOutputPath}"
