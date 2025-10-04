@@ -34,7 +34,8 @@ function Show-IRTMessageTrace {
         # import from xml
         if ($ParameterSet -eq 'Xml') {
             try {
-                $TraceObjects = Import-CliXml -Path $XmlPath
+                $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
+                $TraceObjects = Import-CliXml -Path $ResolvedXmlPath
             }
             catch {
                 $_
@@ -43,6 +44,7 @@ function Show-IRTMessageTrace {
             }
         }
 
+        # constants
         $WorksheetName = 'MessageTrace'
         $TitleDateFormat = "M/d/yy h:mmtt"
         $RawDateProperty = 'Received'
@@ -89,20 +91,20 @@ function Show-IRTMessageTrace {
             $Message = $TraceObjects[$i]
             $Row = [PSCustomObject]@{}
 
-            # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Message.$RawDateProperty
-            }
-            $Row | Add-Member @AddParams
-
             # Raw
             $Raw = $Message | ConvertTo-Json -Depth 10
             $AddParams = @{
                 MemberType = 'NoteProperty'
                 Name       = 'Raw'
                 Value      = $Raw
+            }
+            $Row | Add-Member @AddParams
+
+            # Date/Time
+            $AddParams = @{
+                MemberType  = 'NoteProperty'
+                Name        = $DateColumnHeader
+                Value       = Format-EventDateString $Message.$RawDateProperty
             }
             $Row | Add-Member @AddParams
 
@@ -256,7 +258,7 @@ function Show-IRTMessageTrace {
 
         # resize DateTime column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
-        $Worksheet.Column($Column).Width = 25
+        $Worksheet.Column($Column).Width = 26
 
         # resize Raw column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 

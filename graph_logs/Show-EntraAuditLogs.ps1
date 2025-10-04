@@ -43,9 +43,7 @@ function Show-EntraAuditLogs {
         #region CONSTANTS
 
         $ModulePath = $PSScriptRoot
-        $OutputTable = [System.Collections.Generic.List[PSCustomObject]]::new()
         $WorksheetName = 'EntraAudit'
-        $LogCount = @( $Logs ).Count
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $FileNameDatePattern = "\d{2}-\d{2}-\d{2}_\d{2}-\d{2}"
         $TitleDateFormat = "M/d/yy h:mmtt"
@@ -58,9 +56,8 @@ function Show-EntraAuditLogs {
         # event date formatting
         $RawDateProperty = 'ActivityDateTime'
         $DateColumnHeader = 'DateTime'
-
         $DisplayProperties = @(
-            'Index'
+            'Raw'
             $DateColumnHeader
             'OperationType'
             'ActivityDisplayName'
@@ -119,9 +116,11 @@ function Show-EntraAuditLogs {
     }
 
     process {
+
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
      
         # process each log
-        for ($i = 0; $i -lt $LogCount; $i++) {  
+        for ($i = 0; $i -lt ($Logs | Measure-Object).Count; $i++) {  
         
             # variables
             $Target = $null
@@ -134,17 +133,24 @@ function Show-EntraAuditLogs {
             $DetailStrings = [System.Collections.Generic.list[string]]::new()
 
             $Log = $Logs[$i]
-            $CustomObject = [PSCustomObject]@{
-                Index = $i
-            }
+            $Row = [PSCustomObject]@{}
 
-            # Date/Time
+            # Raw
+            $Raw = $Log | ConvertTo-Json -Depth 10
+            $AddParams = @{
+                MemberType = 'NoteProperty'
+                Name       = 'Raw'
+                Value      = $Raw
+            }
+            $Row | Add-Member @AddParams
+
+            # DateTime
             $AddParams = @{
                 MemberType  = 'NoteProperty'
                 Name        = $DateColumnHeader
                 Value       = Format-EventDateString $Log.$RawDateProperty
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # operationtype
             $AddParams = @{
@@ -152,7 +158,7 @@ function Show-EntraAuditLogs {
                 Name       = 'OperationType'
                 Value      = $Log.OperationType
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # category
             $AddParams = @{
@@ -160,7 +166,7 @@ function Show-EntraAuditLogs {
                 Name       = 'Category'
                 Value      = $Log.Category
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # ActivityDisplayName
             $AddParams = @{
@@ -168,7 +174,7 @@ function Show-EntraAuditLogs {
                 Name       = 'ActivityDisplayName'
                 Value      = $Log.ActivityDisplayName
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
                 
             ### initiated by
             # if user, get perferred property
@@ -212,7 +218,7 @@ function Show-EntraAuditLogs {
                 Name       = 'InitiatedBy'
                 Value      = $AllInitiatedByStrings
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # initiatedby user ip
             $AddParams = @{
@@ -220,7 +226,7 @@ function Show-EntraAuditLogs {
                 Name       = 'InitiatedByIp'
                 Value      = $Log.InitiatedBy.User.IPAddress
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # get target information
             foreach ( $Resource in $Log.TargetResources ) {
@@ -314,7 +320,7 @@ function Show-EntraAuditLogs {
                 Name       = 'Target'
                 Value      = $AllTargets
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
             # add modified properties
             $AllModifiedStrings = $ModifiedStrings -join "`n"
             $AddParams = @{
@@ -322,7 +328,7 @@ function Show-EntraAuditLogs {
                 Name       = 'ModifiedProperties'
                 Value      = $AllModifiedStrings
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # AdditionalDetails
             foreach ( $Detail in $Log.AdditionalDetails ) {
@@ -366,7 +372,7 @@ function Show-EntraAuditLogs {
                 Name       = 'Details'
                 Value      = $DetailsString
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # Result
             $AddParams = @{
@@ -374,7 +380,7 @@ function Show-EntraAuditLogs {
                 Name       = 'Result'
                 Value      = $Log.Result
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # ResultReason
             $AddParams = @{
@@ -382,10 +388,10 @@ function Show-EntraAuditLogs {
                 Name       = 'ResultReason'
                 Value      = $Log.ResultReason
             }
-            $CustomObject | Add-Member @AddParams
+            $Row | Add-Member @AddParams
 
             # add to list
-            $OutputTable.Add( $CustomObject )
+            $Rows.Add($Row)
         }
 
         # select just relevant properties
@@ -402,13 +408,13 @@ function Show-EntraAuditLogs {
             Passthru      = $true
         }
         try {
-            $Workbook = $OutputTable | Export-Excel @ExcelParams
+            $Workbook = $Rows | Export-Excel @ExcelParams
         }
         catch {
             Write-Error "Unable to open new Excel document."
             if ( Get-YesNo "Try closing open files." ) {
                 try {
-                    $Workbook = $OutputTable | Export-Excel @ExcelParams
+                    $Workbook = $Rows | Export-Excel @ExcelParams
                 }
                 catch {
                     throw "Unable to open new Excel document. Exiting."
@@ -479,13 +485,13 @@ function Show-EntraAuditLogs {
 
         #region COLUMN WIDTH
 
-        # resize Index column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Index' } ).Id 
+        # resize Raw column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
         $Worksheet.Column($Column).Width = 8
 
         # resize DateTime column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
-        $Worksheet.Column($Column).Width = 25
+        $Worksheet.Column($Column).Width = 26
 
         # resize ActivityDisplayName column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'ActivityDisplayName' } ).Id

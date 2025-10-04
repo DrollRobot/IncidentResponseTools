@@ -255,7 +255,7 @@
         # Get-IRTMessageTrace
         'MessageTrace'
         # Get-IRTMessageTraceV1
-        'MessageTraceOLD'
+        'MessageTraceV1'
         # Get-IRTInboxRules
         'InboxRule'
         'InboxRules'

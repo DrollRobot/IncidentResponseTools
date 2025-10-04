@@ -49,7 +49,7 @@ function New-InvestigationDirectory {
 			$DomainName = Read-Host "Enter client name"
 		}
 
-		# get date/time string for filename
+		# get datetime string for filename
 		$DateString = Get-Date -Format "yy-MM-dd_HH-mm"
 
 		# if not passed directly, find global

@@ -1,5 +1,5 @@
-New-Alias -Name 'MessageTrace' -Value 'Get-IRTMessageTrace' -Force
-function Get-IRTMessageTrace {
+New-Alias -Name 'MessageTraceOLD' -Value 'Get-IRTMessageTrace_OLD' -Force
+function Get-IRTMessageTrace_OLD {
     <#
 	.SYNOPSIS
 	Downloads incoming and outgoing message trace for specified user, or all users.
@@ -215,7 +215,7 @@ function Get-IRTMessageTrace {
 
                 $Message = $MessageTrace[$i]
 
-                # Date/Time
+                # DateTime
                 $AddParams = @{
                     MemberType  = 'NoteProperty'
                     Name        = $DateColumnHeader

@@ -43,10 +43,13 @@ function Show-UserMFA {
         $OutputTable = [System.Collections.Generic.List[PSCustomObject]]::new()
         $Properties = [System.Collections.Generic.Hashset[string]]::new()
         $PropertySortOrder = @(
+            'Raw'
             'CreatedDateTime'
             'MethodType'
             'DisplayName'
             'PhoneNumber'
+            'PhoneType'
+            'SmsSignInState'
             'EmailAddress'
             'DeviceTag'
             'Id'
@@ -101,6 +104,15 @@ function Show-UserMFA {
                 $CustomObject = [PSCustomObject]@{
                     Id = $Method.Id
                 }
+
+                # Raw
+                $Raw = $Method | ConvertTo-Json -Depth 10
+                $AddParams = @{
+                    MemberType = 'NoteProperty'
+                    Name       = 'Raw'
+                    Value      = $Raw
+                }
+                $CustomObject | Add-Member @AddParams
 
                 foreach ( $Key in $Method.AdditionalProperties.Keys ) {
 
@@ -356,6 +368,14 @@ function Show-UserMFA {
             $EndRow = $WorkSheet.Dimension.End.Row
 
             #region COLUMN WIDTH
+
+            # resize Raw column
+            $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
+            $Worksheet.Column($Column).Width = 8
+
+            # resize DateTime column
+            $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'CreatedDateTime' } ).Id 
+            $Worksheet.Column($Column).Width = 26
             
             # resize Id column
             $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Id' } ).Id
@@ -363,7 +383,7 @@ function Show-UserMFA {
 
             # resize DeleteCommand column
             $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'DeleteCommand' } ).Id
-            $Worksheet.Column($Column).Width = 20
+            $Worksheet.Column($Column).Width = 100
 
             #region FORMATTING
 
