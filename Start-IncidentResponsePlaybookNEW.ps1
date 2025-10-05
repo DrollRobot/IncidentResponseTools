@@ -23,6 +23,8 @@ function Start-IncidentResponsePlaybookNEW {
 
     begin {
 
+        #region BEGIN
+
         # show module version
         $CallStack = @( Get-PSCallStack )
         if ( $CallStack.Count -eq 2 ) {
@@ -34,19 +36,29 @@ function Start-IncidentResponsePlaybookNEW {
             $Global:IRTTestMode = $true
         }
 
-        # if not passed directly, find user in global variable
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
-
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
             # get from global variables
             $ScriptUserObjects = Get-GraphGlobalUserObjects
-                
+            
             # if none found, exit
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
             }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
         }
 
         # confirm connected to exchange, graph
@@ -203,19 +215,25 @@ function Start-IncidentResponsePlaybookNEW {
                         $Exchange,
                         $RunspaceUserObjects
                     )
+                    # set working path
                     Set-Location -Path $WorkingPath
-                    Set-Location -Path $WorkingPath
+                    # connect to exchange
                     $ConnectParams = @{
                         AccessToken = $Exchange.Token
                         UserPrincipalName = $Exchange.UserPrincipalName
                         ShowBanner = $false
                     }
                     Connect-ExchangeOnline @ConnectParams
+                    $MTParams = @{
+                        UserObjects = $RunspaceUserObjects
+                    }
                     try {
-                        Get-IRTMessageTrace -UserObjects $RunspaceUserObjects # uses Get-MessageTraceV2
+                        Get-IRTMessageTrace -Days 90 @MTParams # uses Get-MessageTraceV2
                     }
                     catch {
-                        Get-IRTMessageTraceV1 -UserObjects $RunspaceUserObjects # uses Get-MessageTrace
+                        $_
+                        Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+                        Get-IRTMessageTraceV1 -Days 10 @MTParams  # uses Get-MessageTrace
                     }
                 }
                 Args  = @(
@@ -322,18 +340,27 @@ function Start-IncidentResponsePlaybookNEW {
                         $WorkingPath,
                         $Exchange
                     )
+                    # set path
                     Set-Location -Path $WorkingPath
+                    # connect to exchange
                     $ConnectParams = @{
                         AccessToken = $Exchange.Token
                         UserPrincipalName = $Exchange.UserPrincipalName
                         ShowBanner = $false
                     }
                     Connect-ExchangeOnline @ConnectParams
+                    # action
+                    $MTParams = @{
+                        AllUsers = $true
+                        Days = 2
+                    }
                     try {
-                        Get-IRTMessageTrace -AllUsers
+                        Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
                     }
                     catch {
-                        Get-IRTMessageTraceV1 -AllUsers
+                        $_
+                        Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+                        Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
                     }
                 } 
                 Args  = @(

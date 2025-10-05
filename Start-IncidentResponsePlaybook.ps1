@@ -34,19 +34,29 @@ function Start-IncidentResponsePlaybook {
             $Global:IRTTestMode = $true
         }
 
-        # if not passed directly, find user in global variable
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
-
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
             # get from global variables
             $ScriptUserObjects = Get-GraphGlobalUserObjects
-                
+            
             # if none found, exit
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
             }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
         }
 
         # confirm connected to exchange, graph
@@ -268,14 +278,14 @@ function Start-IncidentResponsePlaybook {
             # download 10 day message trace
             $MTParams = @{
                 UserObjects = $ScriptUserObjects
-                Days = 90
             }
             try {
-                $MTParams =
-                Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
+                Get-IRTMessageTrace -Days 90 @MTParams # uses Get-MessageTraceV2
             }
             catch {
-                Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
+                $_
+                Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+                Get-IRTMessageTraceV1 -Days 10 @MTParams  # uses Get-MessageTrace (limited to 10 days)
             }
 
             # download specific UAL over longer period
@@ -288,12 +298,18 @@ function Start-IncidentResponsePlaybook {
             }
             Get-UserUALogs @UAParams
 
-            # download 10 day message trace for all users
+            # download 2 day message trace for all users
+            $MTParams = @{
+                AllUsers = $true
+                Days = 2
+            }
             try {
-                Get-IRTMessageTrace -AllUsers
+                Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
             }
             catch {
-                Get-IRTMessageTraceV1 -AllUsers
+                $_
+                Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+                Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
             }
 
             ### wait for completion, collect errors

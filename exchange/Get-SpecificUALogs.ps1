@@ -30,32 +30,12 @@ function Get-SpecificUALogs {
 
     begin {
 
-        if ($PSCmdlet.ParameterSetName -eq 'UserObjects') {
-            # if user objects not passed directly, find global
-            if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
+        #region BEGIN
 
-                # get from global variables
-                $ScriptUserObjects = Get-GraphGlobalUserObjects
-                    
-                # if none found, exit
-                if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                    throw "No user objects passed or found in global variables."
-                }
-            }
-            else {
-                $ScriptUserObjects = $UserObjects
-            }
-        }
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $EndDate = Get-Date
 
-        # verify connected to exchange
-        try {
-            $Domain = Get-AcceptedDomain
-        }
-        catch {}
-        if ( -not $Domain ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
-        }
-     
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         $Red = @{ ForegroundColor = 'Red' }
@@ -63,12 +43,49 @@ function Get-SpecificUALogs {
         # $Green = @{ ForegroundColor = 'Green' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
 
+        if ($PSCmdlet.ParameterSetName -eq 'UserObjects') {
+            # if users passed via script argument:
+            if (($UserObjects | Measure-Object).Count -gt 0) {
+                $ScriptUserObjects = $UserObjects
+            }
+            # if not, look for global objects
+            else {
+                
+                # get from global variables
+                $ScriptUserObjects = Get-GraphGlobalUserObjects
+                
+                # if none found, exit
+                if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                    Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                    return
+                }
+                if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                    $ErrorParams = @{
+                        Category    = 'InvalidArgument'
+                        Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                        ErrorAction = 'Stop'
+                    }
+                    Write-Error @ErrorParams
+                }
+            }
+        }
+
+        # verify connected to exchange
+        try {
+            Get-AcceptedDomain
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        }  
+     
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
-        # get query end date
-        $EndDate = Get-Date
     }
 
     process {

@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.4.2'
+    ModuleVersion     = '2.4.3'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -78,7 +78,6 @@
         'exchange\Get-SpecificUALogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
-        'exchange\Get-IRTMessageTrace_OLD.ps1'
         'exchange\Get-IRTInboxRules.ps1'
         'exchange\Grant-MailboxFullAccess.ps1'
         'exchange\Remove-MailboxFullAccess.ps1'
@@ -163,7 +162,6 @@
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
-        'Get-IRTMessageTrace_OLD'
         'Get-IRTMessageTraceV1'
         'Get-IRTInboxRules'
         'Get-UserUALogs'

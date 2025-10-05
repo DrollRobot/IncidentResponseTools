@@ -36,6 +36,9 @@ function Get-IRTMessageTrace {
 
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $DateString = Get-Date -Format $FileNameDateFormat
+        $RawDateProperty = 'Received'
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -43,10 +46,11 @@ function Get-IRTMessageTrace {
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
 
+
+        # create user objects depending on parameters used
         switch ( $ParameterSet ) {
             'UserObjects' {
-                
-                # if passed via script argument:
+                # if users passed via script argument:
                 if (($UserObjects | Measure-Object).Count -gt 0) {
                     $ScriptUserObjects = $UserObjects
                 }
@@ -61,10 +65,17 @@ function Get-IRTMessageTrace {
                         Write-Host @Red "${Function}: No user objects passed or found in global variables."
                         return
                     }
+                    if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                        $ErrorParams = @{
+                            Category    = 'InvalidArgument'
+                            Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                            ErrorAction = 'Stop'
+                        }
+                        Write-Error @ErrorParams
+                    }
                 }
             }
             'UserEmails' {
-
                 # variables
                 $ScriptUserObjects = [System.Collections.Generic.list[psobject]]::new()
 
@@ -79,7 +90,6 @@ function Get-IRTMessageTrace {
                 }
             }
             'AllUsers' {
-
                 # build user object with null principal name
                 $ScriptUserObjects = @(
                     [pscustomobject]@{
@@ -91,25 +101,33 @@ function Get-IRTMessageTrace {
 
         # verify connected to exchange
         try {
-            $Domain = Get-AcceptedDomain
+            Get-AcceptedDomain
         }
-        catch {}
-        if ( -not $Domain ) {
-            Write-Host @Red "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
-            return
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        }
+
+        # verify Get-MessageTraceV2 is available
+        try {
+            Get-Command Get-MessageTraceV2 -ErrorAction 'Stop'
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ResourceUnavailable'
+                Message     = "${Function}: Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Run Get-IRTMessageTraceV1 instead."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
         
-        #region CONSTANTS
-
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $RawDateProperty = 'Received'
-
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
-        # get date/time string for filename
-        $DateString = Get-Date -Format $FileNameDateFormat
     }
 
     process {

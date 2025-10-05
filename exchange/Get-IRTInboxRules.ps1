@@ -24,6 +24,31 @@ function Get-IRTInboxRules {
 
     begin {
 
+        #region BEGIN
+
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $WorksheetName = 'InboxRules'
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $FileDateString = Get-Date -Format $FileNameDateFormat
+        $EventDateFormat = 'MM/dd/yy hh:mm:sstt'
+        $EventDateString = Get-Date -Format $EventDateFormat
+        $DisplayProperties = @(
+            'Raw'
+            'Enabled'
+            'Name'
+            'Description'
+            'DeleteCommand'
+        )
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        $Red = @{ ForegroundColor = 'Red' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
+        
+
         # if user objects not passed directly, find global
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
         
@@ -41,37 +66,16 @@ function Get-IRTInboxRules {
 
         # verify connected to exchange
         try {
-            $Domain = Get-AcceptedDomain
+            Get-AcceptedDomain
         }
-        catch {}
-        if ( -not $Domain ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
-
-        #region CONSTANTS
-     
-        # variables
-        $DisplayProperties = @(
-            'Raw'
-            'Enabled'
-            'Name'
-            'Description'
-            'DeleteCommand'
-        )
-
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Cyan = @{ ForegroundColor = 'Cyan' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-
-        # variables
-        $WorksheetName = 'InboxRules'
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $FileDateString = Get-Date -Format $FileNameDateFormat
-        $EventDateFormat = 'MM/dd/yy hh:mm:sstt'
-        $EventDateString = Get-Date -Format $EventDateFormat
 
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }

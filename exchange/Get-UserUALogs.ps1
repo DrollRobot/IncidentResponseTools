@@ -46,7 +46,8 @@ function Get-UserUALogs {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         # $Yellow = @{ ForegroundColor = 'Yellow' }
 
-        # if passed via script argument:
+
+        # if users passed via script argument:
         if (($UserObjects | Measure-Object).Count -gt 0) {
             $ScriptUserObjects = $UserObjects
         }
@@ -60,6 +61,14 @@ function Get-UserUALogs {
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
                 Write-Host @Red "${Function}: No user objects passed or found in global variables."
                 return
+            }
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
             }
         }
 

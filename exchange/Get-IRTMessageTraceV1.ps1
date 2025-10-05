@@ -30,71 +30,8 @@ function Get-IRTMessageTraceV1 {
 
         #region BEGIN
 
+        $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-
-        switch ( $ParameterSet ) {
-            'UserObjects' {
-                
-                # if passed via parameter
-                if ( $UserObjects ) {
-                    $ScriptUserObjects = $UserObjects
-                }
-                # if not, find global objects
-                else {
-                    
-                    # get from global variables
-                    $ScriptUserObjects = Get-GraphGlobalUserObjects
-                    
-                    # if none found, exit
-                    if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                        throw "No user objects passed or found in global variables."
-                    }
-                }
-            }
-            'UserEmails' {
-
-                # variables
-                $ScriptUserObjects = [System.Collections.Generic.list[psobject]]::new()
-
-                foreach ( $Email in $UserEmails ) {
-
-                    # create object with userprincipalname property
-                    $ScriptUserObjects.Add( 
-                        [pscustomobject]@{
-                            UserPrincipalName = $Email
-                        }
-                    )
-                }
-            }
-            'AllUsers' {
-
-                # build user object with null principal name
-                $ScriptUserObjects = @(
-                    [pscustomobject]@{
-                        UserPrincipalName = $null
-                    }
-                )
-            }
-        }
-
-        # verify installed modules
-        $Modules = @(
-            'ImportExcel'
-            'ExchangeOnlineManagement'
-        )
-        Confirm-InstalledModules -Modules $Modules
-
-        # verify connected to exchange
-        try {
-            $Domain = Get-AcceptedDomain
-        }
-        catch {}
-        if ( -not $Domain ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
-        }
-
-        #region CONSTANTS
-        
         $OutputTable = [System.Collections.Generic.List[psobject]]::new()
         $StartDate = ( Get-Date ).AddDays( $Days * -1 )
         $EndDate = Get-Date
@@ -102,6 +39,7 @@ function Get-IRTMessageTraceV1 {
         # file variables
         $WorksheetName = 'MessageTrace'
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $DateString = Get-Date -Format $FileNameDateFormat
         $TitleDateFormat = "M/d/yy h:mmtt"
         $RawDateProperty = 'Received'
         $DateColumnHeader = 'DateTime'
@@ -125,12 +63,81 @@ function Get-IRTMessageTraceV1 {
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
 
+
+        switch ( $ParameterSet ) {
+            'UserObjects' {
+                # if users passed via script argument:
+                if (($UserObjects | Measure-Object).Count -gt 0) {
+                    $ScriptUserObjects = $UserObjects
+                }
+                # if not, look for global objects
+                else {
+                    
+                    # get from global variables
+                    $ScriptUserObjects = Get-GraphGlobalUserObjects
+                    
+                    # if none found, exit
+                    if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                        Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                        return
+                    }
+                    if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                        $ErrorParams = @{
+                            Category    = 'InvalidArgument'
+                            Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                            ErrorAction = 'Stop'
+                        }
+                        Write-Error @ErrorParams
+                    }
+                }
+            }
+            'UserEmails' {
+                # variables
+                $ScriptUserObjects = [System.Collections.Generic.list[psobject]]::new()
+
+                foreach ( $Email in $UserEmails ) {
+
+                    # create object with userprincipalname property
+                    $ScriptUserObjects.Add( 
+                        [pscustomobject]@{
+                            UserPrincipalName = $Email
+                        }
+                    )
+                }
+            }
+            'AllUsers' {
+                # build user object with null principal name
+                $ScriptUserObjects = @(
+                    [pscustomobject]@{
+                        UserPrincipalName = $null
+                    }
+                )
+            }
+        }
+
+        # verify installed modules
+        $Modules = @(
+            'ImportExcel'
+            'ExchangeOnlineManagement'
+        )
+        Confirm-InstalledModules -Modules $Modules
+
+        # verify connected to exchange
+        try {
+            Get-AcceptedDomain
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        }        
+
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
-        # get date/time string for filename
-        $DateString = Get-Date -Format $FileNameDateFormat
     }
 
     process {

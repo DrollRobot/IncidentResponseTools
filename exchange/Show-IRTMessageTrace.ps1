@@ -22,8 +22,13 @@ function Show-IRTMessageTrace {
 
         #region BEGIN
 
+        # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        $WorksheetName = 'MessageTrace'
+        $TitleDateFormat = "M/d/yy h:mmtt"
+        $RawDateProperty = 'Received'
+        $DateColumnHeader = 'DateTime'
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -44,12 +49,6 @@ function Show-IRTMessageTrace {
             }
         }
 
-        # constants
-        $WorksheetName = 'MessageTrace'
-        $TitleDateFormat = "M/d/yy h:mmtt"
-        $RawDateProperty = 'Received'
-        $DateColumnHeader = 'DateTime'
-
         # import metadata
         if ($TraceObjects[0].Metadata) {
 
@@ -64,7 +63,7 @@ function Show-IRTMessageTrace {
             $Days = $Metadata.Days
         }
         else {
-            Write-Host @Red "${Function}: No Metadata found."
+            Write-Error "${Function}: No Metadata found."
         }
 
         # build file name

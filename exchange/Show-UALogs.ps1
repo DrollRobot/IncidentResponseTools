@@ -25,10 +25,7 @@ function Show-UALogs {
 
         #region BEGIN
 
-       if ($Test) {
-            $Global:IRTTestMode = $true
-        }
-
+        # constants
         $ModulePath = $PSScriptRoot
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
@@ -36,13 +33,16 @@ function Show-UALogs {
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $TitleDateFormat = "M/d/yy h:mmtt"
         $DateColumnHeader = 'DateTime'
-        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Green = @{ ForegroundColor = 'Green' }
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+        if ($Test) {$Global:IRTTestMode = $true}
         
         # import from xml
         if ($ParameterSet -eq 'Xml') {
@@ -56,11 +56,6 @@ function Show-UALogs {
                 return
             }
         }
-
-        # import all operations csv
-        $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
-        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
-        $OperationsData = Import-Csv -Path $OperationsCsvPath
 
         # $Groups = Request-GraphGroups
         # $Roles = Request-DirectoryRoles
@@ -95,6 +90,11 @@ function Show-UALogs {
         $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
         $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
         $WorksheetTitle = "Unified audit logs for ${UserEmail}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
+
+        # import all operations csv
+        $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
+        $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
+        $OperationsData = Import-Csv -Path $OperationsCsvPath
 
         if ($Global:IRTTestMode) {
             # build set of operations from csv
@@ -150,14 +150,6 @@ function Show-UALogs {
             }
             $Row | Add-Member @AddParams
 
-            # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Log.$RawDateProperty
-            }
-            $Row | Add-Member @AddParams
-
             # Tree
             # $AddParams = @{
             #     MemberType = 'NoteProperty'
@@ -165,6 +157,14 @@ function Show-UALogs {
             #     Value      = $Log | Format-Tree -Depth 10 | Out-String # need to figure out how to output to pipeline, not host
             # }
             # $Row | Add-Member @AddParams
+
+            # Date/Time
+            $AddParams = @{
+                MemberType  = 'NoteProperty'
+                Name        = $DateColumnHeader
+                Value       = Format-EventDateString $Log.$RawDateProperty
+            }
+            $Row | Add-Member @AddParams
 
             #region USERIDS
             # need to see if this works consistently across multiple log types
