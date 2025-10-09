@@ -49,12 +49,12 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,ReviewSetAdded,Added review set,,User created a review set.
 ,,,ReviewSetSavedSearchAdded,Added saved search for a review set,,"User created a saved filters in a review set. The audit activity includes the review set name, saved filters name and the query used."
 ,,,TagTemplateAdded,Added tag template,,User created tag template in eDiscovery settings.
-,,,SampleViewCancelled,Cancelled sample view,,"User canceled sample view. The audit activity includes the canceled search’s name, ID, query, and associated settings."
-,,,StatisticsViewCancelled,Cancelled statistics view,,"User canceled statistics view. The audit activity includes the canceled search’s name, ID, query, and associated settings."
+,,,SampleViewCancelled,Cancelled sample view,,"User canceled sample view. The audit activity includes the canceled searchï¿½s name, ID, query, and associated settings."
+,,,StatisticsViewCancelled,Cancelled statistics view,,"User canceled statistics view. The audit activity includes the canceled searchï¿½s name, ID, query, and associated settings."
 ,,,CaseUpdated,Changed eDiscovery case,,Updated an eDiscovery case.
 ,,,HoldUpdated,Changed hold in eDiscovery case,,"Hold was modified or edited. This audit activity includes the hold name, ID, and the specific data sources and query values that were modified."
 ,,,CaseClosed,Closed eDiscovery case,,An eDiscovery case was closed.
-,,,ReviewSetCopied,Copied review set,,User triggers the “Add to another review set” process.
+,,,ReviewSetCopied,Copied review set,,User triggers the ï¿½Add to another review setï¿½ process.
 ,,,CaseAdded,Created eDiscovery case,,Added a new eDiscovery case.
 ,,,HoldCreated,Created hold in eDiscovery case,,"A new hold was created. This audit activity includes the case name, case ID and hold name that was created."
 ,,,CaseRemoved,Delete eDiscovery case,,An eDiscovery case was deleted. Any hold associated with the case has to be removed before the case can be deleted.
@@ -64,7 +64,7 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,ReviewSetSavedSearchRemoved,Removed saved search for a review set,,User deleted a saved filters in a review set.
 ,,,TagTemplateRemoved,Removed tag template,,User removed a tag template in eDiscovery settings. The audit activity includes the name and object ID of the tag template removed.
 ,,,CaseReopened,Reopened eDiscovery case,,An eDiscovery case was reopened.
-,,,HoldRetryDistributionSync,Retried distribution sync for hold,,User trigged “retry policy” in a hold.
+,,,HoldRetryDistributionSync,Retried distribution sync for hold,,User trigged ï¿½retry policyï¿½ in a hold.
 ,,,GetActionsForAllReviewSets,Retrieved actions for all review sets,,User viewed a list of actions associated with all review sets in a case
 ,,,GetActionsForAllHolds,Retrieved all action for hold,,"User viewed a list of actions associated with all holds in a case. The audit activity includes case name, ID, hold name, ID, and the name of the list of actions."
 ,,,GetActionsForSearch,Retrieved all action for search,,"User viewed a list of actions (such as exports) associated with a search. The audit activity includes case name, ID, search name, ID, and the name of the list of actions."
@@ -75,13 +75,13 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,GetSingleActionForCase,Retrieved single action for case,,"User viewed a single action associated with an eDiscovery case. For example, the user viewed the export process in process manager. The audit activity includes case name, ID, and settings and ID associated with the process."
 ,,,GetSingleActionForHold,Retrieved single action for hold,,User viewed a single action associated with a hold.
 ,,,GetSingleActionForReviewSet,Retrieved single action for review set,,User viewed a single action associated with a review set.
-,,,GetSingleActionForSearch,Retrieved single action for search,,"User viewed a single action associated with a search. For example, the user viewed the export process in the search’s process manager. The audit activity includes case name, ID, and settings and ID associated with the process."
+,,,GetSingleActionForSearch,Retrieved single action for search,,"User viewed a single action associated with a search. For example, the user viewed the export process in the searchï¿½s process manager. The audit activity includes case name, ID, and settings and ID associated with the process."
 ,,,AlgoJobSubmitted,Submitted new algo job,,User ran analytics on the documents in a review set.
 ,,,BurnJobSubmitted,Submitted new burn job,,User converted all the redacted documents in a review set to PDF files.
-,,,PurviewSearchAddToReviewSetJobSubmitted,Submitted purview search add to review set job,,"User triggered a “add to review set” process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant add to review set process settings used."
-,,,PurviewSearchExportJobSubmitted,Submitted purview search export job,,"User triggered an “export” process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant export process settings used and the export name."
-,,,PurviewSearchSampleJobSubmitted,Submitted purview search sample job,,"User triggered a “generate sample” process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant sample process settings used."
-,,,PurviewSearchStatisticsJobSubmitted,Submitted purview search statistics job,,"User triggered a “generate statistics” process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant statistics process settings used."
+,,,PurviewSearchAddToReviewSetJobSubmitted,Submitted purview search add to review set job,,"User triggered a ï¿½add to review setï¿½ process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant add to review set process settings used."
+,,,PurviewSearchExportJobSubmitted,Submitted purview search export job,,"User triggered an ï¿½exportï¿½ process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant export process settings used and the export name."
+,,,PurviewSearchSampleJobSubmitted,Submitted purview search sample job,,"User triggered a ï¿½generate sampleï¿½ process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant sample process settings used."
+,,,PurviewSearchStatisticsJobSubmitted,Submitted purview search statistics job,,"User triggered a ï¿½generate statisticsï¿½ process from a search. This audit activity includes the search name, ID, and the specific data sources and query values that were associated to the search. It also includes relevant statistics process settings used."
 ,,,ReviewSetExportJobSubmitted,Submitted review set export job,,"Exported documents from review set. This audit activity includes the review set name, list of documents IDs being exported and relevant export process settings."
 ,,,ReviewSetDocumentsTaggedById,Tagged documents by ID for a review set,,"User applied tags to specific documents in a review set. The audit activity includes the case name, review set name and the list of items being tagged."
 ,,,ReviewSetDocumentsTaggedByQuery,Tagged documents by query for a review set,,"User applied tags to specific documents in a review set after filtering by query. The audit activity includes the case name, review set name and the list of items being tagged."
@@ -95,7 +95,7 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,TagTemplateUpdated,Updated tag template,,User updated a tag template in eDiscovery settings. The audit activity includes the name and object ID of the tag template updated.
 ,,,TagsUpdated,Updated tags,,User updated review set tags in a case.
 ,,,TagTemplateTagsUpdated,Updated tags for a tag template,,User updated tags for a tag template. The audit activity includes the name and ID of the tag template tags updated.
-,,,TenantSettingsUpdated,Updated tenant settings,,User updated eDiscovery’s tenant settings.
+,,,TenantSettingsUpdated,Updated tenant settings,,User updated eDiscoveryï¿½s tenant settings.
 ,,,PurviewSearchUploadFile,Uploaded file for Purview search,,"User uploaded a file for search by file. This audit activity includes the case name, case ID, search name, search ID, and the name of the file the user uploaded."
 ,,,AlgoGetReviewSetAttachmentsReport,Viewed analytics review set attachments report,,User viewed analytics attachment report. This audit activity includes case and review set name and ID.
 ,,,AlgoGetReviewSetDocumentsReport,Viewed analytics review set documents report,,User viewed analytics document report.
@@ -112,8 +112,8 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,FavoriteListViewed,Viewed favorite list,,User viewed a list of favorite cases.
 ,,,HoldViewed,Viewed hold,,User viewed a hold inside a case. This audit activity includes the hold name and ID the user viewed. It also includes the specific data sources and query values inside the hold that was viewed by the user.
 ,,,HoldListViewed,Viewed hold list,,"User viewed the holds list inside a case. This audit activity includes the case name, case ID, and the list of holds name and ID the user viewed."
-,,,HoldResultsViewed,Viewed hold results,,"User viewed hold’s results. The audit activity includes case name, case ID, hold name, and hold ID."
-,,,HoldStatusViewed,Viewed hold status,,"User viewed hold’s status. The audit activity includes case name, case ID, hold name, and hold ID."
+,,,HoldResultsViewed,Viewed hold results,,"User viewed holdï¿½s results. The audit activity includes case name, case ID, hold name, and hold ID."
+,,,HoldStatusViewed,Viewed hold status,,"User viewed holdï¿½s status. The audit activity includes case name, case ID, hold name, and hold ID."
 ,,,AlgoIsSettingChanged,Viewed if analytics settings are changed,,This audit activity includes case and review set name and ID.
 ,,,LoadCountInCaseViewed,Viewed load count in case,,User viewed the count of load sets in a case.
 ,,,LoadListViewed,Viewed load list,,User viewed a list of load sets in review set.
@@ -124,18 +124,18 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,ReviewSetListViewed,Viewed review set list,,User viewed the list of review sets in a case.
 ,,,ReviewSetSummaryViewed,Viewed review set summary,,User viewed the Overview of a Review set.
 ,,,SampleResultsViewed,Viewed sample results,,User viewed search sample results view.
-,,,SampleStatusViewed,Viewed sample status,,"User viewed search sample view’s status. The audit activity includes search’s name, ID, query, and associated settings."
+,,,SampleStatusViewed,Viewed sample status,,"User viewed search sample viewï¿½s status. The audit activity includes searchï¿½s name, ID, query, and associated settings."
 ,,,ReviewSetSavedSearchListViewed,Viewed saved search list for a review set,,User viewed a list of saved filters in a review set. The audit activity includes the review set name and the name of the list of saved filters viewed.
 ,,,ReviewSetSearchCountViewed,Viewed search count for a review set,,"User ran a search within a review set and viewed the count returned. The audit activity includes the case name, review set name and the count of items returned in the search results."
 ,,,ReviewSetSearchOptionsViewed,Viewed search options for a review set,,User viewed the settings of an add to review set. The audit activity includes the case name and review set name.
 ,,,ReviewSetSearchRun,Viewed search results for a review set,,"User ran a search within a review set. The audit activity includes the case name, review set name and the list of items returned in the search results."
 ,,,StatisticsResultsViewed,Viewed statistics results,,User viewed search statistics results.
-,,,StatisticsStatusViewed,Viewed statistics status,,"User viewed search statistics view’s status. The audit activity includes search’s name, ID, query, and associated settings."
+,,,StatisticsStatusViewed,Viewed statistics status,,"User viewed search statistics viewï¿½s status. The audit activity includes searchï¿½s name, ID, query, and associated settings."
 ,,,TagTemplateListViewed,Viewed tag template list,,User viewed the list of tag template in eDiscovery settings. The audit activity includes the list of tag templates viewed.
 ,,,TagsViewed,Viewed tags,,User viewed review set tags in a case.
 ,,,TagTemplateTagsViewed,Viewed tags for a tag template,,User viewed tags for a tag template. The audit activity includes the name and ID of the tag template tags viewed.
-,,,TenantSettingsViewed,Viewed tenant settings,,User viewed eDiscovery’s tenant settings. The audit activity contains information on the setting values.
-,,,MailItemsAccessed,Accessed mailbox items,,Messages were read or accessed in mailbox. Audit records for this activity are triggered in one of two ways: when a mail client (such as Outlook) performs a bind operation on messages or when mail protocols (such as Exchange ActiveSync or IMAP) sync items in a mail folder. Analyzing audit records for this activity is useful when investigating compromised email account.
+,,,TenantSettingsViewed,Viewed tenant settings,,User viewed eDiscoveryï¿½s tenant settings. The audit activity contains information on the setting values.
+Low,Exchange,ExchangeItemAggregated,MailItemsAccessed,Accessed mailbox items,,Messages were read or accessed in mailbox. Audit records for this activity are triggered in one of two ways: when a mail client (such as Outlook) performs a bind operation on messages or when mail protocols (such as Exchange ActiveSync or IMAP) sync items in a mail folder. Analyzing audit records for this activity is useful when investigating compromised email account.
 ,,,Add-MailboxPermission,Added delegate mailbox permissions,,"An administrator assigned the FullAccess mailbox permission to a user (known as a delegate) to another person's mailbox. The FullAccess permission allows the delegate to open the other person's mailbox, and read and manage the contents of the mailbox. The audit record for this activity is also generated when a system account in the Microsoft 365 service periodically performs maintenance tasks in behalf of your organization. A common task performed by a system account is updating the permissions for system mailboxes. For more information, see System accounts in Exchange mailbox audit records."
 ,,,UpdateCalendarDelegation,Added or removed user with delegate access to calendar folder,,A user was added or removed as a delegate to the calendar of another user's mailbox. Calendar delegation gives someone else in the same organization permissions to manage the mailbox owner's calendar.
 ,,,AddFolderPermissions,Added permissions to folder,,A folder permission was added. Folder permissions control which users in your organization can access folders in a mailbox and the messages located in those folders.
@@ -732,7 +732,7 @@ FormImage includes any place within Forms that user can upload an image, such as
 ,,,Reset user password.,Reset user password,,Administrator resets the password for a user.
 ,,,Set force change user password.,Set property that forces user to change password,,Administrator set the property that forces a user to change their password the next time the user signs in to Microsoft 365.
 ,,,Set license properties.,Set license properties,,Administrator modifies the properties of a licensed assigned to a user.
-,AzureActiveDirectory,AzureActiveDirectoryStsLogon,Update user.,Updated user,,"Administrator changes one or more properties of a user account. For a list of the user properties that can be updated, see the ""Update user attributes"" section in Microsoft Entra audit Report Events."
+,AzureActiveDirectory,AzureActiveDirectory,Update user.,Updated user,,"Administrator changes one or more properties of a user account. For a list of the user properties that can be updated, see the ""Update user attributes"" section in Microsoft Entra audit Report Events."
 ,,,Organization created,Organization created,,Admin or the user has created a new organization on Viva Goals.
 ,,,User added,User added,,A new user has been added to an organization on Viva Goals.
 ,,,User deactivated,User deactivated,,A user has been deactivated in an organization.

@@ -31,7 +31,8 @@ function Get-UserUALogs {
         [boolean] $WaitOnMessageTrace = $false,
 
         [boolean] $Xml = $true,
-        [boolean] $Excel = $true
+        [boolean] $Excel = $true,
+        [switch] $Test
     )
 
     begin {
@@ -54,6 +55,7 @@ function Get-UserUALogs {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         # $Yellow = @{ ForegroundColor = 'Yellow' }
 
+        if ($Test) {$Global:IRTTestMode = $true}
 
         # if users passed via script argument:
         if (($UserObjects | Measure-Object).Count -gt 0) {
@@ -97,7 +99,8 @@ function Get-UserUALogs {
         if ($ParameterSet -eq 'Absolute') {
             # start - convert user string into object
             try {
-                $StartDateUtc = Get-Date $Start -ErrorAction Stop
+                $StartDate = Get-Date -Date $Start -ErrorAction 'Stop'
+                $StartDateUtc = [DateTime]::SpecifyKind($StartDate, [DateTimeKind]::Local).ToUniversalTime()
             }
             catch {
                 $ErrorParams = @{
@@ -109,7 +112,8 @@ function Get-UserUALogs {
             }
             # end - convert user string into object
             try {
-                $EndDateUtc = Get-Date $End -ErrorAction Stop
+                $EndDate = Get-Date -Date $End -ErrorAction 'Stop'
+                $EndDateUtc = [DateTime]::SpecifyKind($EndDate, [DateTimeKind]::Local).ToUniversalTime()
             }
             catch {
                 $ErrorParams = @{

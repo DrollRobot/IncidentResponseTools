@@ -98,17 +98,11 @@ function Show-UALogs {
 
         if ($Global:IRTTestMode) {
             # build set of operations from csv
-            $OperationsFromCsv = [System.Collections.Generic.Hashset[PSCustomObject]]::new() 
+            $OperationsFromCsv = [System.Collections.Generic.Hashset[string]]::new() 
             foreach ($Row in $OperationsData) {
-                [void]$OperationsFromCsv.Add(
-                    [PSCustomObject]@{
-                        Workload = $Row.Workload
-                        RecordType = $Row.RecordType
-                        Operation = $Row.Operation
-                    }
-                )
+                [void]$OperationsFromCsv.Add("$($Row.Workload)|$($Row.RecordType)|$($Row.Operation)")
             }
-           $OperationsFromLog = [System.Collections.Generic.Hashset[PSCustomObject]]::new() 
+           $OperationsFromLog = [System.Collections.Generic.Hashset[string]]::new() 
         }
     }
 
@@ -130,11 +124,7 @@ function Show-UALogs {
             # save operations to create complete list
             if ($Global:IRTTestMode) {
                 [void]$OperationsFromLog.Add(
-                    [PSCustomObject]@{
-                        Workload = $Log.AuditData.Workload
-                        RecordType = $Log.AuditData.RecordType
-                        Operation = $Log.AuditData.Operation
-                    }
+                    "$($Log.AuditData.Workload)|$($Log.AuditData.RecordType)|$($Log.AuditData.Operation)"
                 )
             }
 
@@ -499,7 +489,14 @@ function Show-UALogs {
             # find operations from log that are missing in csv
             foreach ($o in $OperationsFromLog) {
                 if ($OperationsFromCsv.Add($o)) {
-                    [void]$OperationsToAdd.Add($o)
+                    $Split = $o.Split('|')
+                    [void]$OperationsToAdd.Add(
+                        [PSCustomObject]@{
+                            Workload = $Split[0]
+                            RecordType = $Split[1]
+                            Operation = $Split[2]
+                        }
+                    )
                 }
             }
             Write-Host @Red "Add to ${AllOperationsFileName}:"
