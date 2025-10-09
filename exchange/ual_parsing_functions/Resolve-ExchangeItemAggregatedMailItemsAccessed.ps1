@@ -10,8 +10,10 @@ function Resolve-ExchangeItemAggregatedMailItemsAccessed {
     param (
         [Parameter( Mandatory )]
         [psobject] $Log,
+
         [Parameter( Mandatory )]
         [boolean] $WaitOnMessageTrace,
+
         [Parameter( Mandatory )]
         [string] $UserName
     )
@@ -44,9 +46,8 @@ function Resolve-ExchangeItemAggregatedMailItemsAccessed {
                 Name = $VariableName
                 Scope = 'Global'
             }
-            $Table = Get-Variable @Params
+            $MessageTraceTable = Get-Variable @Params
         }
-
     }
 
     process {
@@ -60,14 +61,15 @@ function Resolve-ExchangeItemAggregatedMailItemsAccessed {
             # Items
             foreach ($Item in $Items) {
                 $InternetMessageId = $Item.InternetMessageId
-                if ($Table.Value) {
-                    $Trace = $Table.Value[$InternetMessageId]
+                if ($MessageTraceTable.Value) {
+                    $Trace = $MessageTraceTable.Value[$InternetMessageId]
                     if ($Trace) {
                         $Subject = $Trace.Subject
-                        $Summary.Add( "    Subject: ${Subject}" )            
                     }
-                    else {
-                    }
+                }
+
+                if ($Subject) {
+                    $Summary.Add( "    Subject: ${Subject}" )            
                 }
                 else {
                     $Summary.Add( "    Item: ${InternetMessageId}" )

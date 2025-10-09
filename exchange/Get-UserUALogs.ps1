@@ -14,12 +14,19 @@ function Get-UserUALogs {
     1.4.0 - Updating to add metadata object, use shorter file names.
     1.3.0 - Updated to output objects.
 	#>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Relative')]
     param (
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
+
+        [Parameter(ParameterSetName = 'Relative')]
         [int] $Days = 1,
+
+        [Parameter(Mandatory, ParameterSetName = 'Absolute')]
+        [string] $Start,
+        [Parameter(Mandatory, ParameterSetName = 'Absolute')]
+        [string] $End,
 
         [boolean] $WaitOnMessageTrace = $false,
 
@@ -33,6 +40,7 @@ function Get-UserUALogs {
 
         # constants
         $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
         $AllLogs = [System.Collections.Generic.List[psobject]]::new()
         $FileNameDateFormat = 'yy-MM-dd_HH-mm'
         $FileNameDateString = (Get-Date).ToString($FileNameDateFormat)
@@ -65,7 +73,7 @@ function Get-UserUALogs {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -74,16 +82,54 @@ function Get-UserUALogs {
 
         # verify connected to exchange
         try {
-            $Domain = Get-AcceptedDomain
+            [void](Get-AcceptedDomain)
         }
-        catch {}
-        if ( -not $Domain ) {
+        catch {
             $ErrorParams = @{
                 Category    = 'ConnectionError'
-                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
+        } 
+
+        # attempt to parse user input dates into datetime objects
+        if ($ParameterSet -eq 'Absolute') {
+            # start - convert user string into object
+            try {
+                $StartDateUtc = Get-Date $Start -ErrorAction Stop
+            }
+            catch {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "-Start invalid. Use format 'MM/dd/yy hh:mm(tt)"
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+            # end - convert user string into object
+            try {
+                $EndDateUtc = Get-Date $End -ErrorAction Stop
+            }
+            catch {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "-End invalid. Use format 'MM/dd/yy hh:mm(tt)"
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+            # make sure dates are in correct order
+            if ($StartDateUtc -gt $EndDateUtc) {
+                $Temp = $StartDateUtc
+                $StartDateUtc = $EndDateUtc
+                $EndDateUtc = $Temp
+            }
+        }
+        # create objects based on days
+        elseif ($ParameterSet -eq 'Relative') {
+            $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
+            $EndDateUtc = (Get-Date).ToUniversalTime()
         }
 
         # get client domain name for file output
@@ -104,8 +150,6 @@ function Get-UserUALogs {
             $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
 
             # build query params
-            $EndDateUtc = (Get-Date).ToUniversalTime()
-            $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
             $BaseParams = @{
                 ResultSize     = 5000
                 SessionCommand = 'ReturnLargeSet'
@@ -201,7 +245,7 @@ function Get-UserUALogs {
             if (($AllLogs | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidResult'
-                    Message     = "${Function}: 0 total logs retrieved. Exiting."
+                    Message     = "0 total logs retrieved. Exiting."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams

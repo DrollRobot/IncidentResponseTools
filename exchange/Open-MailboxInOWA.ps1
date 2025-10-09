@@ -51,7 +51,7 @@ function Open-MailboxInOWA {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -60,17 +60,16 @@ function Open-MailboxInOWA {
 
         # verify connected to exchange
         try {
-            $Domain = Get-AcceptedDomain
+            [void](Get-AcceptedDomain)
         }
-        catch {}
-        if ( -not $Domain ) {
+        catch {
             $ErrorParams = @{
                 Category    = 'ConnectionError'
-                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
-        }
+        }  
     }
 
     process {

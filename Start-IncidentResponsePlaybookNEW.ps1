@@ -54,7 +54,7 @@ function Start-IncidentResponsePlaybookNEW {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -334,40 +334,40 @@ function Start-IncidentResponsePlaybookNEW {
                     $ScriptUserObjects
                 )
             }
-            # Get-IRTMessageTrace -AllUsers
-            @{  Script = {
-                    param( 
-                        $WorkingPath,
-                        $Exchange
-                    )
-                    # set path
-                    Set-Location -Path $WorkingPath
-                    # connect to exchange
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    # action
-                    $MTParams = @{
-                        AllUsers = $true
-                        Days = 2
-                    }
-                    try {
-                        Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
-                    }
-                    catch {
-                        $_
-                        Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-                        Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
-                    }
-                } 
-                Args  = @(
-                    $WorkingPath,
-                    $Global:Exchange
-                )
-            }
+            # # Get-IRTMessageTrace -AllUsers
+            # @{  Script = {
+            #         param( 
+            #             $WorkingPath,
+            #             $Exchange
+            #         )
+            #         # set path
+            #         Set-Location -Path $WorkingPath
+            #         # connect to exchange
+            #         $ConnectParams = @{
+            #             AccessToken = $Exchange.Token
+            #             UserPrincipalName = $Exchange.UserPrincipalName
+            #             ShowBanner = $false
+            #         }
+            #         Connect-ExchangeOnline @ConnectParams
+            #         # action
+            #         $MTParams = @{
+            #             AllUsers = $true
+            #             Days = 2
+            #         }
+            #         try {
+            #             Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
+            #         }
+            #         catch {
+            #             $_
+            #             Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+            #             Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
+            #         }
+            #     } 
+            #     Args  = @(
+            #         $WorkingPath,
+            #         $Global:Exchange
+            #     )
+            # }
         )
 
         try {

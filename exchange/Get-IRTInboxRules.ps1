@@ -66,12 +66,12 @@ function Get-IRTInboxRules {
 
         # verify connected to exchange
         try {
-            Get-AcceptedDomain
+            [void](Get-AcceptedDomain)
         }
         catch {
             $ErrorParams = @{
                 Category    = 'ConnectionError'
-                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams

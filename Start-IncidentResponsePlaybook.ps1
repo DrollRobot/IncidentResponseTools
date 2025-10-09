@@ -52,7 +52,7 @@ function Start-IncidentResponsePlaybook {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -298,19 +298,19 @@ function Start-IncidentResponsePlaybook {
             }
             Get-UserUALogs @UAParams
 
-            # download 2 day message trace for all users
-            $MTParams = @{
-                AllUsers = $true
-                Days = 2
-            }
-            try {
-                Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
-            }
-            catch {
-                $_
-                Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-                Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
-            }
+            # # download 2 day message trace for all users
+            # $MTParams = @{
+            #     AllUsers = $true
+            #     Days = 2
+            # }
+            # try {
+            #     Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
+            # }
+            # catch {
+            #     $_
+            #     Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
+            #     Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
+            # }
 
             ### wait for completion, collect errors
             while ($Global:Playbook_JobList.Completed -contains $false) {

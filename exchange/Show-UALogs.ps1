@@ -273,13 +273,13 @@ function Show-UALogs {
                     $EventObject = Resolve-ExchangeItemUpdate @OldParams
                 }
                 'ExchangeItemGroup HardDelete' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @EmailParams
                 }
                 'ExchangeItemGroup MoveToDeletedItems' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @EmailParams
                 }
                 'ExchangeItemGroup SoftDelete' {
-                    $EventObject = Resolve-ExchangeItemGroupDelete @OldParams
+                    $EventObject = Resolve-ExchangeItemGroupDelete @EmailParams
                 }
                 'SharePoint SearchQueryPerformed' {
                     $EventObject = Resolve-SharePointSearchQueryPerformed @OldParams

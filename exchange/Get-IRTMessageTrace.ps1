@@ -68,7 +68,7 @@ function Get-IRTMessageTrace {
                     if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                         $ErrorParams = @{
                             Category    = 'InvalidArgument'
-                            Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                            Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                             ErrorAction = 'Stop'
                         }
                         Write-Error @ErrorParams
@@ -101,12 +101,12 @@ function Get-IRTMessageTrace {
 
         # verify connected to exchange
         try {
-            Get-AcceptedDomain
+            [void](Get-AcceptedDomain)
         }
         catch {
             $ErrorParams = @{
                 Category    = 'ConnectionError'
-                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
@@ -114,12 +114,12 @@ function Get-IRTMessageTrace {
 
         # verify Get-MessageTraceV2 is available
         try {
-            Get-Command Get-MessageTraceV2 -ErrorAction 'Stop'
+            [void](Get-Command Get-MessageTraceV2 -ErrorAction 'Stop')
         }
         catch {
             $ErrorParams = @{
                 Category    = 'ResourceUnavailable'
-                Message     = "${Function}: Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Run Get-IRTMessageTraceV1 instead."
+                Message     = "Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Run Get-IRTMessageTraceV1 instead."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
@@ -131,6 +131,8 @@ function Get-IRTMessageTrace {
     }
 
     process {
+
+        #region USER LOOP
 
         foreach ( $ScriptUserObject in $ScriptUserObjects ) {
 
@@ -193,7 +195,7 @@ function Get-IRTMessageTrace {
                 }
                 # if only results in one, no need to merge.
                 else {
-                    $MessageTrace = $SenderTrace + $RecipientTrace
+                    [System.Collections.Generic.List[psobject]]$MessageTrace = $SenderTrace + $RecipientTrace
                 }
             }
             # if -allusers

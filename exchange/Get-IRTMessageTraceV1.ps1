@@ -21,7 +21,7 @@ function Get-IRTMessageTraceV1 {
         [switch] $AllUsers,
 
         [int] $Days = 10,
-        [int] $PageLimit = 10, # 1000 is server-side page cap, 200 represents 1m lines, the max for excel
+        [int] $PageLimit = 10, # 1000 is server-side page limit, 200 represents 1m lines, the max for excel
         [string] $TableStyle = 'Dark8',
         [boolean] $Open = $true
     )
@@ -30,13 +30,11 @@ function Get-IRTMessageTraceV1 {
 
         #region BEGIN
 
+        # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        $OutputTable = [System.Collections.Generic.List[psobject]]::new()
         $StartDate = ( Get-Date ).AddDays( $Days * -1 )
         $EndDate = Get-Date
-
-        # file variables
         $WorksheetName = 'MessageTrace'
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $DateString = Get-Date -Format $FileNameDateFormat
@@ -56,6 +54,8 @@ function Get-IRTMessageTraceV1 {
             'MessageTraceId'
             'MessageId'
         )
+
+        $OutputTable = [System.Collections.Generic.List[psobject]]::new()
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -84,7 +84,7 @@ function Get-IRTMessageTraceV1 {
                     if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                         $ErrorParams = @{
                             Category    = 'InvalidArgument'
-                            Message     = "${Function}: No -UserObjects, No `$Global:UserObjects."
+                            Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
                             ErrorAction = 'Stop'
                         }
                         Write-Error @ErrorParams
@@ -115,21 +115,14 @@ function Get-IRTMessageTraceV1 {
             }
         }
 
-        # verify installed modules
-        $Modules = @(
-            'ImportExcel'
-            'ExchangeOnlineManagement'
-        )
-        Confirm-InstalledModules -Modules $Modules
-
         # verify connected to exchange
         try {
-            Get-AcceptedDomain
+            [void](Get-AcceptedDomain)
         }
         catch {
             $ErrorParams = @{
                 Category    = 'ConnectionError'
-                Message     = "${Function}: Not connected to Exchange. Run Connect-ExchangeOnline."
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
@@ -141,6 +134,8 @@ function Get-IRTMessageTraceV1 {
     }
 
     process {
+
+        #region USER LOOP
 
         foreach ( $ScriptUserObject in $ScriptUserObjects ) {
 
