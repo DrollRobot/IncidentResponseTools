@@ -52,6 +52,10 @@ function Resolve-ExchangeItemAggregatedMailItemsAccessed {
 
     process {
 
+        # ClientInfoString
+        $ClientInfoString = $Log.AuditData.ClientInfoString
+        $Summary.Add( "ClientInfoString: ${ClientInfoString}" )
+
         # Folders
         foreach ($Folder in $Log.AuditData.Folders) {
 

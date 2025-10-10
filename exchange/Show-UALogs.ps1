@@ -26,7 +26,6 @@ function Show-UALogs {
         #region BEGIN
 
         # constants
-        $ModulePath = $PSScriptRoot
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
         $RawDateProperty = 'CreationDate'
@@ -91,15 +90,16 @@ function Show-UALogs {
         $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
         $WorksheetTitle = "Unified audit logs for ${UserEmail}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
 
-        # import all operations csv
+        # import alloperations csv
+        $ModulePath = $PSScriptRoot
         $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
         $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
-        $OperationsData = Import-Csv -Path $OperationsCsvPath
+        $OperationsCsvData = Import-Csv -Path $OperationsCsvPath
 
         if ($Global:IRTTestMode) {
             # build set of operations from csv
             $OperationsFromCsv = [System.Collections.Generic.Hashset[string]]::new() 
-            foreach ($Row in $OperationsData) {
+            foreach ($Row in $OperationsCsvData) {
                 [void]$OperationsFromCsv.Add("$($Row.Workload)|$($Row.RecordType)|$($Row.Operation)")
             }
            $OperationsFromLog = [System.Collections.Generic.Hashset[string]]::new() 
@@ -189,23 +189,32 @@ function Show-UALogs {
             $Row | Add-Member @AddParams
 
             #region OPERATION NAME
-            # find operation friendly name
-            $OperationsRow = $OperationsData | Where-Object { $_.Operation -eq $Log.Operations }
-            $OperationFriendlyName = if (-not [string]::IsNullOrWhiteSpace($OperationsRow.CustomDescription)) {
-                $OperationsRow.CustomDescription
-            }
-            elseif (-not [string]::IsNullOrWhiteSpace($OperationsRow.FriendlyName)) {
-                $OperationsRow.FriendlyName
-            }
-            else {
-                $Log.Operations
-            }
+
+            # Operation
             $AddParams = @{
                 MemberType = 'NoteProperty'
-                Name       = 'OperationFriendlyName'
-                Value      = $OperationFriendlyName
+                Name       = 'Operation'
+                Value      = $Log.AuditData.Operation
             }
             $Row | Add-Member @AddParams
+
+            # # find operation friendly name # FIXME not needed?
+            # $OperationsRow = $OperationsCsvData | Where-Object { $_.Operation -eq $Log.Operations }
+            # $OperationFriendlyName = if (-not [string]::IsNullOrWhiteSpace($OperationsRow.CustomDescription)) {
+            #     $OperationsRow.CustomDescription
+            # }
+            # elseif (-not [string]::IsNullOrWhiteSpace($OperationsRow.FriendlyName)) {
+            #     $OperationsRow.FriendlyName
+            # }
+            # else {
+            #     $Log.Operations
+            # }
+            # $AddParams = @{
+            #     MemberType = 'NoteProperty'
+            #     Name       = 'OperationFriendlyName'
+            #     Value      = $OperationFriendlyName
+            # }
+            # $Row | Add-Member @AddParams
 
             #region IP ADDRESSES
             $IpAddresses = [System.Collections.Generic.Hashset[string]]::new()
@@ -226,7 +235,7 @@ function Show-UALogs {
             }
             $Row | Add-Member @AddParams
 
-            # process log type
+            #region SUMMARY
             $RecordType = $Log.RecordType
             $Operations = $Log.Operations
             $OperationString = $RecordType + ' ' + $Operations
@@ -244,8 +253,14 @@ function Show-UALogs {
                 'AzureActiveDirectory Update user.' {
                     $EventObject = Resolve-AzureActiveDirectoryUpdateUser @OldParams
                 }
+                'ExchangeAdmin New-InboxRule' {
+                    $EventObject = Resolve-ExchangeAdminInboxRule -Log $Log
+                }
                 'ExchangeAdmin Set-ConditionalAccessPolicy' {
-                    $EventObject = Resolve-ExchangeAdminSetConditionalAccessPolicy @OldParams
+                    $EventObject = Resolve-ExchangeAdminSetConditionalAccessPolicy -Log $Log
+                }
+                'ExchangeAdmin Set-InboxRule' {
+                    $EventObject = Resolve-ExchangeAdminInboxRule -Log $Log
                 }
                 'ExchangeItemAggregated AttachmentAccess' {
                     $EventObject = Resolve-ExchangeItemAggregatedAttachmentAccess @OldParams
@@ -275,19 +290,28 @@ function Show-UALogs {
                     $EventObject = Resolve-SharePointSearchQueryPerformed @OldParams
                 }
                 'SharePointFileOperation FileAccessed' {
-                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
+                }
+                'SharePointFileOperation FileDownloaded' {
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
                 }
                 'SharePointFileOperation FileModified' {
-                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
                 }
                 'SharePointFileOperation FileModifiedExtended' {
-                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
                 }
                 'SharePointFileOperation FilePreviewed' {
-                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
+                }
+                'SharePointFileOperation FileSyncDownloadedFull' {
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
+                }
+                'SharePointFileOperation FileSyncUploadedFull' {
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
                 }
                 'SharePointFileOperation FileUploaded' {
-                    $EventObject = Resolve-SharePointFileOperationFileAccessed -Log $Log
+                    $EventObject = Resolve-SharePointFileOperation -Log $Log
                 }
                 'SharePoint PageViewed' {
                     $EventObject = Resolve-SharePointPageViewed @OldParams
@@ -347,60 +371,36 @@ function Show-UALogs {
 
         $IpAddressesColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'IpAddresses'}).Id | Convert-DecimalToExcelColumn
         $SummaryColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'Summary'}).Id | Convert-DecimalToExcelColumn
+        $OperationColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'Operation'}).Id | Convert-DecimalToExcelColumn
 
         #region CELL COLORING
-        # if cell matches EXACTLY, make background RED
-        $Strings = @(
-            'Add app role assignment grant to user.'
-            'Add app role assignment to service principal.'
-            'Add application.'
-            'Created new inbox rule in Outlook web app'
-            'Consent to application.'
-            'Enable-InboxRule'
-            'New-InboundConnector'
-            'Update application – Certificates and secrets management'
-        )
-        foreach ( $String in $Strings ) {
-            $CFParams = @{
-                Worksheet       = $WorkSheet
-                Address         = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
-                RuleType        = 'Equal'
-                ConditionValue  = $String
-                BackgroundColor = 'LightPink'
-            }
-            Add-ConditionalFormatting @CFParams
-        }
 
-        # if cell CONTAINS, make background RED
-        $Strings = @(
-            'New inbox rule'
-            'Modified inbox rule from Outlook web app'
-        )
-        foreach ( $String in $Strings ) {
-            $CFParams = @{
-                Worksheet       = $WorkSheet
-                Address         = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
-                RuleType        = 'ContainsText'
-                ConditionValue  = $String
-                BackgroundColor = 'LightPink'
+        foreach ($Row in $OperationsCsvData) {
+
+            # color high risk operations red
+            if ($Row.Risk -eq 'High') {
+                $CFParams = @{
+                    Worksheet       = $WorkSheet
+                    Address         = "${OperationColumn}${TableStartRow}:${OperationColumn}${EndRow}"
+                    RuleType        = 'ContainsText'
+                    ConditionValue  = $Row.Operation
+                    BackgroundColor = 'LightPink'
+                }
+                Add-ConditionalFormatting @CFParams
             }
-            Add-ConditionalFormatting @CFParams
-        }
-        
-        # if cell matches EXACTLY, make background YELLOW
-        $Strings = @(
-            # 'User started security info registration'
-        )
-        foreach ( $String in $Strings ) {
-            $CFParams = @{
-                Worksheet       = $WorkSheet
-                Address         = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
-                RuleType        = 'Equal'
-                ConditionValue  = $String
-                BackgroundColor = 'LightGoldenRodYellow'
+
+            # color medium risk operations orange
+            if ($Row.Risk -eq 'Medium') {
+                $CFParams = @{
+                    Worksheet       = $WorkSheet
+                    Address         = "${OperationColumn}${TableStartRow}:${OperationColumn}${EndRow}"
+                    RuleType        = 'ContainsText'
+                    ConditionValue  = $Row.Operation
+                    BackgroundColor = 'LightGoldenrodYellow'
+                }
+                Add-ConditionalFormatting @CFParams
             }
-            Add-ConditionalFormatting @CFParams
-        }
+        }        
         
         # if cell CONTAINS text anywhere, make background BLUE
         $Strings = @(
@@ -439,9 +439,9 @@ function Show-UALogs {
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'IpAddresses' } ).Id 
         $Worksheet.Column($Column).Width = 16
 
-        # resize OperationFriendlyName column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'OperationFriendlyName' } ).Id 
-        $Worksheet.Column($Column).Width = 30
+        # # resize OperationFriendlyName column # FIXME
+        # $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'OperationFriendlyName' } ).Id 
+        # $Worksheet.Column($Column).Width = 30
 
         # resize Summary column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Summary' } ).Id 
@@ -499,10 +499,13 @@ function Show-UALogs {
                     )
                 }
             }
-            Write-Host @Red "Add to ${AllOperationsFileName}:"
-            $OperationsToAdd | Format-Table | Out-Host
-            Write-Host @Red "Exporting to: operations_to_add.csv"
-            $OperationsToAdd | Export-Csv -Path "operations_to_add.csv" -NoTypeInformation
+            # output for user
+            if (($OperationsToAdd | Measure-Object).Count -gt 0) {
+                Write-Host @Red "Add to ${AllOperationsFileName}:"
+                $OperationsToAdd | Format-Table | Out-Host
+                Write-Host @Red "Exporting to: operations_to_add.csv"
+                $OperationsToAdd | Export-Csv -Path "operations_to_add.csv" -NoTypeInformation
+            }
         }
                     
         # save and close

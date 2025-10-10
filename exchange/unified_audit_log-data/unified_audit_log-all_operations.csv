@@ -1,7 +1,22 @@
 Risk,Workload,RecordType,Operation,FriendlyName,CustomDescription,Description
-High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email connector. Can be used to send email from an account even after credentials have been reset. Seen used to send spam.
+Low,Exchange,ExchangeItemAggregated,AttachmentAccess,,,
+Low,SharePoint,SharePoint,SignInEvent,,,
+High,AzureActiveDirectory,AzureActiveDirectory,Update PasswordProfile.,,,
+Low,AzureActiveDirectory,AzureActiveDirectory,Update StsRefreshTokenValidFrom Timestamp.,,,
+Medium,AzureActiveDirectory,AzureActiveDirectory,Reset user password.,,,
+Medium,Exchange,ExchangeAdmin,Remove-InboxRule,,,
+Medium,Exchange,ExchangeAdmin,Disable-InboxRule,,,
+Medium,Exchange,ExchangeAdmin,Set-Mailbox,,,
+Medium,AzureActiveDirectory,AzureActiveDirectory,Disable account.,,,
+Medium,AzureActiveDirectory,AzureActiveDirectory,Enable account.,,,
+Medium,SecurityComplianceCenter,SecurityComplianceAlerts,AlertEntityGenerated,,,
+High,Exchange,ExchangeAdmin,New-InboundConnector,,,Created a new Email connector. Can be used to send email from an account even after credentials have been reset. Seen used to send spam.
+High,Exchange,ExchangeAdmin,Set-InboundConnector,,,Modified existing email connector. (#FIXME I'm assuming there's a Set operation. Only personally seen "New")
+High,AzureActiveDirectory,AzureActiveDirectory,Add application.,,,
+High,Exchange,ExchangeAdmin,New-App,,,
+High,AzureActiveDirectory,AzureActiveDirectory,Add app role assignment grant to user.,,,
 ,,,Add delegation entry.,Added delegation entry,,An authentication permission was created/granted to an application in Microsoft Entra ID.
-,,,Add service principal.,Added service principal,,An application was registered in Microsoft Entra ID. An application is represented by a service principal in the directory.
+High,AzureActiveDirectory,AzureActiveDirectory,Add service principal.,Added service principal,,An application was registered in Microsoft Entra ID. An application is represented by a service principal in the directory.
 ,,,Add service principal credentials.,Added credentials to a service principal,,Credentials were added to a service principal in Microsoft Entra ID. A service principle represents an application in the directory.
 ,,,Remove delegation entry.,Removed delegation entry,,An authentication permission was removed from an application in Microsoft Entra ID.
 ,,,Remove service principal.,Removed a service principal from the directory,,An application was deleted/unregistered from Microsoft Entra ID. An application is represented by a service principal in the directory.
@@ -136,29 +151,31 @@ High,Exchange,ExchangeAdmin,New-InboundConnector,,,User created a new Email conn
 ,,,TagTemplateTagsViewed,Viewed tags for a tag template,,User viewed tags for a tag template. The audit activity includes the name and ID of the tag template tags viewed.
 ,,,TenantSettingsViewed,Viewed tenant settings,,User viewed eDiscovery�s tenant settings. The audit activity contains information on the setting values.
 Low,Exchange,ExchangeItemAggregated,MailItemsAccessed,Accessed mailbox items,,Messages were read or accessed in mailbox. Audit records for this activity are triggered in one of two ways: when a mail client (such as Outlook) performs a bind operation on messages or when mail protocols (such as Exchange ActiveSync or IMAP) sync items in a mail folder. Analyzing audit records for this activity is useful when investigating compromised email account.
+Low,Exchange,50,MailItemsAccessed,Accessed mailbox items,,
 ,,,Add-MailboxPermission,Added delegate mailbox permissions,,"An administrator assigned the FullAccess mailbox permission to a user (known as a delegate) to another person's mailbox. The FullAccess permission allows the delegate to open the other person's mailbox, and read and manage the contents of the mailbox. The audit record for this activity is also generated when a system account in the Microsoft 365 service periodically performs maintenance tasks in behalf of your organization. A common task performed by a system account is updating the permissions for system mailboxes. For more information, see System accounts in Exchange mailbox audit records."
 ,,,UpdateCalendarDelegation,Added or removed user with delegate access to calendar folder,,A user was added or removed as a delegate to the calendar of another user's mailbox. Calendar delegation gives someone else in the same organization permissions to manage the mailbox owner's calendar.
 ,,,AddFolderPermissions,Added permissions to folder,,A folder permission was added. Folder permissions control which users in your organization can access folders in a mailbox and the messages located in those folders.
 ,,,Copy,Copied messages to another folder,,A message was copied to another folder.
-,,,Create,Created mailbox item,,"An item is created in the Calendar, Contacts, Notes, or Tasks folder in the mailbox. For example, a new meeting request is created. Creating, sending, or receiving a message isn't audited. Also, creating a mailbox folder isn't audited."
-,,,New-InboxRule,Created new inbox rule in Outlook web app,,A mailbox owner or other user with access to the mailbox created an inbox rule in the Outlook web app.
+Low,Exchange,ExchangeItem,Create,Created mailbox item,,"An item is created in the Calendar, Contacts, Notes, or Tasks folder in the mailbox. For example, a new meeting request is created. Creating, sending, or receiving a message isn't audited. Also, creating a mailbox folder isn't audited."
+High,Exchange,ExchangeAdmin,New-InboxRule,Created new inbox rule in Outlook web app,,A mailbox owner or other user with access to the mailbox created an inbox rule in the Outlook web app.
 ,,,SoftDelete,Deleted messages from Deleted Items folder,,A message was permanently deleted or deleted from the Deleted Items folder. These items are moved to the Recoverable Items folder. Messages are also moved to the Recoverable Items folder when a user selects it and presses Shift+Delete.
 ,,,ApplyRecordLabel,Labeled message as a record,,A message was classified as a record. Occurs when a retention label that classifies content as a record is manually or automatically applied to a message.
 ,,,Move,Moved messages to another folder,,A message was moved to another folder.
-,,,MoveToDeletedItems,Moved messages to Deleted Items folder,,A message was deleted and moved to the Deleted Items folder.
+Low,Exchange,ExchangeItemGroup,MoveToDeletedItems,Moved messages to Deleted Items folder,,A message was deleted and moved to the Deleted Items folder.
 ,,,UpdateFolderPermissions,Modified folder permission,,A folder permission was changed. Folder permissions control which users in your organization can access mailbox folders and the messages in the folder.
-,,,Set-InboxRule,Modified inbox rule from Outlook web app,,A mailbox owner or other user with access to the mailbox modified an inbox rule using the Outlook web app.
+High,Exchange,ExchangeAdmin,Set-InboxRule,Modified inbox rule from Outlook web app,,A mailbox owner or other user with access to the mailbox modified an inbox rule using the Outlook web app.
 ,,,HardDelete,Purged messages from the mailbox,,A message was purged from the Recoverable Items folder (permanently deleted from the mailbox).
 ,,,Remove-MailboxPermission,Removed delegate mailbox permissions,,"An administrator removed the FullAccess permission (that was assigned to a delegate) from a person's mailbox. After the FullAccess permission is removed, the delegate can't open the other person's mailbox or access any content in it."
 ,,,RemoveFolderPermissions,Removed permissions from folder,,A folder permission was removed. Folder permissions control which users in your organization can access folders in a mailbox and the messages located in those folders.
-,,,Send,Sent message,,"A message was sent, replied to or forwarded."
+Low,Exchange,ExchangeItem,Send,Sent message,,"A message was sent, replied to or forwarded."
 ,,,SendAs,Sent message using Send As permissions,,A message was sent using the SendAs permission. This means that another user sent the message as though it came from the mailbox owner.
 ,,,SendOnBehalf,Sent message using Send On Behalf permissions,,A message was sent using the SendOnBehalf permission. This means that another user sent the message on behalf of the mailbox owner. The message indicates to the recipient whom the message was sent on behalf of and who actually sent the message.
-,,,UpdateInboxRules,Updated inbox rules from Outlook client,,"A mailbox owner or other user with access to the mailbox created, modified, or removed an inbox rule by using the Outlook client."
+High,Exchange,ExchangeAdmin,UpdateInboxRules,Updated inbox rules from Outlook client,,"A mailbox owner or other user with access to the mailbox created, modified, or removed an inbox rule by using the Outlook client."
 ,,,Update,Updated message,,A message or its properties was changed.
 ,,,MailboxLogin,User signed in to mailbox,,The user signed in to their mailbox.
-,,,FileAccessed,Accessed file,,"User or system account accesses a file. Once a user accesses a file, the FileAccessed event isn't logged again for the same user for same file for the next five minutes."
-,,,FileAccessedExtended,,,"This is related to the ""Accessed file"" (FileAccessed) activity. A FileAccessedExtended event is logged when the same person continually accesses a file for an extended period (up to 3 hours)."
+Low,OneDrive,SharePointFileOperation,FileAccessed,Accessed file,,"User or system account accesses a file. Once a user accesses a file, the FileAccessed event isn't logged again for the same user for same file for the next five minutes."
+Low,SharePoint,SharePointFileOperation,FileAccessed,Accessed file,,"User or system account accesses a file. Once a user accesses a file, the FileAccessed event isn't logged again for the same user for same file for the next five minutes."
+eAccessedExtended,,,"This is related to the ""Accessed file"" (FileAccessed) activity. A FileAccessedExtended event is logged when the same person continually accesses a file for an extended period (up to 3 hours)."
 ,,,ComplianceSettingChanged,Changed retention label for a file,,A retention label was applied to or removed from a document. This event is triggered when a retention label is manually or automatically applied to a message.
 ,,,LockRecord,Changed record status to locked,,The record status of a retention label that classifies a document as a record was locked. This means the document can't be modified or deleted. Only users assigned at least the contributor permission for a site can change the record status of a document.
 ,,,UnlockRecord,Changed record status to unlocked,,The record status of a retention label that classifies a document as a record was unlocked. This means that the document can be modified or deleted. Only users assigned at least the contributor permission for a site can change the record status of a document.
@@ -173,12 +190,13 @@ Low,Exchange,ExchangeItemAggregated,MailItemsAccessed,Accessed mailbox items,,Me
 ,,,FileMalwareDetected,Detected malware in file,,SharePoint anti-virus engine detects malware in a file.
 ,,,FileCheckOutDiscarded,Discarded file checkout,,"User discards (or undoes) a checked out file. That means any changes they made to the file when it was checked out are discarded, and not saved to the version of the document in the document library."
 ,,,FileDownloaded,Downloaded file,,User downloads a document from a site.
-,,,FileModified,Modified file,,User or system account modifies the content or the properties of a document on a site. The system waits five minutes before it logs another FileModified event when the same user modifies the content or properties of the same document.
-,,,FileModifiedExtended,,,"This is related to the ""Modified file"" (FileModified) activity. A FileModifiedExtended event is logged when the same person continually modifies a file for an extended period (up to 3 hours)."
+Low,OneDrive,SharePointFileOperation,FileModified,Modified file,,User or system account modifies the content or the properties of a document on a site. The system waits five minutes before it logs another FileModified event when the same user modifies the content or properties of the same document.
+Low,OneDrive,SharePointFileOperation,FileModifiedExtended,,,"This is related to the ""Modified file"" (FileModified) activity. A FileModifiedExtended event is logged when the same person continually modifies a file for an extended period (up to 3 hours)."
 ,,,FileMoved,Moved file,,User moves a document from its current location on a site to a new location.
-,,,FilePreviewed,,,"User previews files on a SharePoint or OneDrive for Business site. These events typically occur in high volumes based on a single activity, such as viewing an image gallery."
+Low,OneDrive,SharePointFileOperation,FilePreviewed,,,"User previews files on a SharePoint or OneDrive for Business site. These events typically occur in high volumes based on a single activity, such as viewing an image gallery."
+Low,SharePoint,SharePointFileOperation,FilePreviewed,,,"User previews files on a SharePoint or OneDrive for Business site. These events typically occur in high volumes based on a single activity, such as viewing an image gallery."
 ,,,SearchQueryPerformed,Performed search query,,"User or system account performs a search in SharePoint or OneDrive for Business. Some common scenarios where a service account performs a search query include applying an eDiscovery holds and retention policy to sites and OneDrive accounts, and autoapplying retention or sensitivity labels to site content. To enable logging for this activity, see Get started with auditing solutions."
-,,,FileRecycled,Recycled a file,,User moves a file into the SharePoint Recycle Bin.
+Low,OneDrive,SharePointFileOperation,FileRecycled,Recycled a file,,User moves a file into the SharePoint Recycle Bin.
 ,,,FolderRecycled,Recycled a folder,,User moves a folder into the SharePoint Recycle Bin.
 ,,,FileVersionsAllMinorsRecycled,Recycled all minor versions of file,,User deletes all minor versions from the version history of a file. The deleted versions are moved to the site's recycle bin.
 ,,,FileVersionsAllRecycled,Recycled all versions of file,,User deletes all versions from the version history of a file. The deleted versions are moved to the site's recycle bin.
@@ -228,7 +246,6 @@ Low,Exchange,ExchangeItemAggregated,MailItemsAccessed,Accessed mailbox items,,Me
 ,,,BackupPolicyDeleted,Deleted a Backup Policy,,A Microsoft 365 Backup policy is deleted.
 ,,,DraftRestoreTaskDeleted,Deleted Draft Restore Task,,A draft restore task is deleted in Microsoft 365 Backup.
 ,,,BackupPolicyEdited,Edited a Backup Policy,,"A Microsoft 365 Backup policy is updated. Backup policies are updated by any of the following actions:
-
 1. Renaming the policy.
 2. Add one or more protection units.
 3. Removing one or more protection units."
@@ -328,20 +345,7 @@ Low,Exchange,ExchangeItemAggregated,MailItemsAccessed,Accessed mailbox items,,Me
 ,,,CompromisedSignIn,Compromised sign-in detection,,Sign-in risk detections represent the probability that a given authentication request isn't the authorized owner of the account.
 ,,,CreateComment,Created comment,,Form owner adds comment or score to a quiz.
 ,,,CreateForm,Created form,,Form owner creates a new form.
-,,,EditForm,Edited form,,"Form owner edits a form such as creating, removing, or editing a question. The property EditOperation:string indicates the edit operation name. The possible operations are:
-- CreateQuestion
-- CreateQuestionChoice
-- DeleteQuestion
-- DeleteQuestionChoice
-- DeleteFormImage
-- DeleteQuestionImage
-- UpdateQuestion
-- UpdateQuestionChoice
-- UploadFormImage/Bing/Onedrive
-- UploadQuestionImage
-- ChangeTheme
-
-FormImage includes any place within Forms that user can upload an image, such as in a query or as a background theme."
+,,,EditForm,Edited form,,"Form owner edits a form such as creating, removing, or editing a question. The property EditOperation:string indicates the edit operation name. The possible operations are: -CreateQuestion, -CreateQuestionChoice, -DeleteQuestion, -DeleteQuestionChoice, -DeleteFormImage, -DeleteQuestionImage, -UpdateQuestion, -UpdateQuestionChoice, -UploadFormImage/Bing/Onedrive, -UploadQuestionImage, -ChangeTheme. FormImage includes any place within Forms that user can upload an image, such as in a query or as a background theme."
 ,,,MoveForm,Moved form,,Form owner moves a form.
 ,,,DeleteForm,Deleted form,,Form owner deletes a form. This includes SoftDelete (delete option used and form moved to recycle bin) and HardDelete (Recycle bin is emptied).
 ,,,ViewForm,Viewed form (design time),,Form owner opens an existing form for editing.
@@ -360,14 +364,7 @@ FormImage includes any place within Forms that user can upload an image, such as
 ,,,ViewResponse,Viewed response,,Form owner views a particular response.
 ,,,GetSummaryLink,Created summary link,,Form owner creates summary results link to share results.
 ,,,DeleteSummaryLink,Deleted summary link,,Form owner deletes summary results link.
-,,,UpdatePhishingStatus,Updated form phishing status,,"This event is logged whenever the detailed value for the internal security status was changed, regardless of whether this changed the final security state (for example, form is now Closed or Opened). This means you might see duplicate events without a final security state change. The possible status values for this event are:
-- Take Down
-- Take Down by Admin
-- Admin Unblocked
-- Auto Blocked
-- Auto Unblocked
-- Customer Reported
-- Reset Customer Reported"
+,,,UpdatePhishingStatus,Updated form phishing status,,"This event is logged whenever the detailed value for the internal security status was changed, regardless of whether this changed the final security state (for example, form is now Closed or Opened). This means you might see duplicate events without a final security state change. The possible status values for this event are: -Take Down, -Take Down by Admin, -Admin Unblocked, -Auto Blocked, -Auto Unblocked, -Customer Reported, -Reset Customer Reported"
 ,,,UpdateUserPhishingStatus,Updated user phishing status,,"This event is logged whenever the value for the user security status was changed. The value of the user status in the audit record is Confirmed as Phisher when the user created a phishing form that was taken down by the Microsoft Online safety team. If an admin unblocks the user, the value of the user's status is set to Reset as Normal User."
 ,,,ProInvitation,Sent Forms Pro invitation,,User selects to activate a Pro trial.
 ,,,UpdateFormSetting,Updated form setting,,Form owner updates one or multiple form settings.
@@ -717,9 +714,10 @@ FormImage includes any place within Forms that user can upload an image, such as
 ,,,GroupUpdated,Updated group,,"Site administrator or owner changes the settings of a group for a site. This can include changing the group's name, who can view or edit the group membership, and how membership requests are handled."
 ,,,ManagedSyncClientAllowed,Allowed computer to sync files,,User successfully establishes a sync relationship with a site. The sync relationship is successful because the user's computer is a member of a domain that's been added to the list of domains (called the safe recipients list) that can access document libraries in your organization.
 ,,,UnmanagedSyncClientBlocked,Blocked computer from syncing files,,"User tries to establish a sync relationship with a site from a computer that isn't a member of your organization's domain or is a member of a domain that hasn't been added to the list of domains (called the safe recipients list) that can access document libraries in your organization. The sync relationship isn't allowed, and the user's computer is blocked from syncing, downloading, or uploading files on a document library."
-,,,FileSyncDownloadedFull,Downloaded files to computer,,User downloads a file to their computer from a SharePoint document library or OneDrive for Business using OneDrive sync app (OneDrive.exe).
+Low,OneDrive,SharePointFileOperation,FileSyncDownloadedFull,Downloaded files to computer,,User downloads a file to their computer from OneDrive for Business using OneDrive sync app (OneDrive.exe).
+Low,Sharepoint,SharePointFileOperation,FileSyncDownloadedFull,Downloaded files to computer,,User downloads a file to their computer from a SharePoint document library.
 ,,,FileSyncDownloadedPartial,Downloaded file changes to computer,,This event has been deprecated along with the old OneDrive for Business sync app (Groove.exe).
-,,,FileSyncUploadedFull,Uploaded files to document library,,User uploads a new file or changes to a file in SharePoint document library or OneDrive for Business using OneDrive sync app (OneDrive.exe).
+Low,OneDrive,SharePointFileOperation,FileSyncUploadedFull,Uploaded files to document library,,User uploads a new file or changes to a file in SharePoint document library or OneDrive for Business using OneDrive sync app (OneDrive.exe).
 ,,,FileSyncUploadedPartial,Uploaded file changes to document library,,This event has been deprecated along with the old OneDrive for Business sync app (Groove.exe).
 ,,,DataShareCreated,Data Share Created,,When the data export is created by the user.
 ,,,DataShareDeleted,Data Share Deleted,,When the data export is deleted by the user.
@@ -732,7 +730,8 @@ FormImage includes any place within Forms that user can upload an image, such as
 ,,,Reset user password.,Reset user password,,Administrator resets the password for a user.
 ,,,Set force change user password.,Set property that forces user to change password,,Administrator set the property that forces a user to change their password the next time the user signs in to Microsoft 365.
 ,,,Set license properties.,Set license properties,,Administrator modifies the properties of a licensed assigned to a user.
-,AzureActiveDirectory,AzureActiveDirectory,Update user.,Updated user,,"Administrator changes one or more properties of a user account. For a list of the user properties that can be updated, see the ""Update user attributes"" section in Microsoft Entra audit Report Events."
+Low,AzureActiveDirectory,AzureActiveDirectory,Update user.,Admin updated user,,"Administrator changes one or more properties of a user account. For a list of the user properties that can be updated, see the ""Update user attributes"" section in Microsoft Entra audit Report Events."
+Low,AzureActiveDirectory,50,Update user.,Admin updated user,,"Administrator changes one or more properties of a user account. For a list of the user properties that can be updated, see the ""Update user attributes"" section in Microsoft Entra audit Report Events."
 ,,,Organization created,Organization created,,Admin or the user has created a new organization on Viva Goals.
 ,,,User added,User added,,A new user has been added to an organization on Viva Goals.
 ,,,User deactivated,User deactivated,,A user has been deactivated in an organization.

@@ -14,19 +14,20 @@ function Get-UserUALogs {
     1.4.0 - Updating to add metadata object, use shorter file names.
     1.3.0 - Updated to output objects.
 	#>
-    [CmdletBinding(DefaultParameterSetName = 'Relative')]
+    [CmdletBinding()]
     param (
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
 
-        [Parameter(ParameterSetName = 'Relative')]
-        [int] $Days = 1,
-
-        [Parameter(Mandatory, ParameterSetName = 'Absolute')]
+        # relative date range
+        [int] $Days, # default value set at #DEFAULTDAYS
+        # absolute date range
         [string] $Start,
-        [Parameter(Mandatory, ParameterSetName = 'Absolute')]
         [string] $End,
+
+        [string[]] $Operations,
+        [switch] $RiskyOperations,
 
         [boolean] $WaitOnMessageTrace = $false,
 
@@ -41,10 +42,7 @@ function Get-UserUALogs {
 
         # constants
         $Function = $MyInvocation.MyCommand.Name
-        $ParameterSet = $PSCmdlet.ParameterSetName
         $AllLogs = [System.Collections.Generic.List[psobject]]::new()
-        $FileNameDateFormat = 'yy-MM-dd_HH-mm'
-        $FileNameDateString = (Get-Date).ToString($FileNameDateFormat)
         $FileNamePrefix = 'UnifiedAuditLogs'
 
         # colors
@@ -95,8 +93,36 @@ function Get-UserUALogs {
             Write-Error @ErrorParams
         } 
 
+        # get client domain name for file output
+        $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
+        $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
+
+        #region DATE RANGE
+
+        # validate only relative or absolute
+        if ($Days -and ($Start -or $End)) {
+            $ErrorParams = @{
+                Category    = 'InvalidArgument'
+                Message     = "Choose either relative range with -Days or absolute range with -Start and -End."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams  
+        }
+
+        # validate both start and end used
+        if (($Start -and -not $End) -or
+            ($End -and -not $Start)
+        ) {
+            $ErrorParams = @{
+                Category    = 'InvalidArgument'
+                Message     = "Specify both -Start and -End"
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams  
+        }
+
         # attempt to parse user input dates into datetime objects
-        if ($ParameterSet -eq 'Absolute') {
+        if ($Start -and $End) {
             # start - convert user string into object
             try {
                 $StartDate = Get-Date -Date $Start -ErrorAction 'Stop'
@@ -131,17 +157,51 @@ function Get-UserUALogs {
             }
         }
         # create objects based on days
-        elseif ($ParameterSet -eq 'Relative') {
+        else {
+            # set default value for days ### must be done after checking for relative/absolute arguments
+            if (-not $Days) {
+                $Days = 1 #DEFAULTDAYS
+            }
+
             $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
             $EndDateUtc = (Get-Date).ToUniversalTime()
         }
 
-        # get client domain name for file output
-        $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
-        $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
+        # set file name date to query end date
+        $FileNameDateFormat = 'yy-MM-dd_HH-mm'
+        $FileNameDateString = $EndDateUtc.ToLocalTime().ToString($FileNameDateFormat)
+
+        #region OPERATIONS
+
+        $OperationsSet = [System.Collections.Generic.Hashset[string]]::new()
+        # add user specified operations
+        foreach ($o in $Operations) {[void]$OperationsSet.Add($o)}
+        # add risk operations
+        if ($RiskyOperations) {
+            # import alloperations csv
+            $ModulePath = $PSScriptRoot
+            $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
+            $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
+            $OperationsCsvData = Import-Csv -Path $OperationsCsvPath
+
+            # get high risk operations
+            $HighRiskOperations = ($OperationsCsvData | Where-Object {$_.Risk -eq 'High'}).Operation
+
+            # add to set
+            foreach ($o in $HighRiskOperations) {[void]$OperationsSet.Add($o)}
+
+            # FIXME get these properly tagged in spreadsheet.
+            # app consent
+            # [void]$OperationsSet.Add("Add delegated permission grant.") #FIXME
+            # mfa changes
+            # [void]$OperationsSet.Add("User registered security info") #FIXME
+            # [void]$OperationsSet.Add("User registered all required security info") #FIXME
+        }
     }
 
     process {
+
+        #region USER LOOP
 
         foreach ($ScriptUserObject in $ScriptUserObjects) {
 
@@ -151,8 +211,12 @@ function Get-UserUALogs {
             $UserId = $ScriptUserObject.Id
             $UserIdNumbers = $UserId -replace '-', ''
             $UserName = $UserEmail -split '@' | Select-Object -First 1
-            $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
-
+            if ($Days) {
+                $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
+            }
+            else {
+                $XmlOutputPath = "${FileNamePrefix}_${UserName}_${FileNameDateString}.xml"
+            }
             # build query params
             $BaseParams = @{
                 ResultSize     = 5000
@@ -161,6 +225,12 @@ function Get-UserUALogs {
                 StartDate      = $StartDateUtc
                 EndDate        = $EndDateUtc
             }
+
+            # add operations, if specified
+            if (($OperationsSet | Measure-Object).Count -gt 0) {
+                $BaseParams['Operations'] = $OperationsSet
+            }
+
             $QueryTable = [ordered]@{
                 '1' = @{
                     Params = @{
@@ -201,9 +271,9 @@ function Get-UserUALogs {
                 # run query
                 Write-Host @Blue $Text
                 $Page = Search-UnifiedAuditLog @FirstPageParams
-                $LogCount = @($Page).Count
+                $LogCount = ($Page | Measure-Object).Count
 
-                if ( $LogCount -gt 0 ) {
+                if ($LogCount -gt 0) {
 
                     Write-Host @Blue "Retrieved ${LogCount} logs."
 
@@ -247,12 +317,8 @@ function Get-UserUALogs {
 
             # exit if no logs returned
             if (($AllLogs | Measure-Object).Count -eq 0) {
-                $ErrorParams = @{
-                    Category    = 'InvalidResult'
-                    Message     = "0 total logs retrieved. Exiting."
-                    ErrorAction = 'Stop'
-                }
-                Write-Error @ErrorParams
+                Write-Host @Red "0 total logs retrieved. Exiting."
+                return
             }
 
             # remove duplicates

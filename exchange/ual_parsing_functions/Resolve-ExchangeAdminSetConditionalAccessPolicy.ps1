@@ -9,30 +9,27 @@ function Resolve-ExchangeAdminSetConditionalAccessPolicy {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
 
         # variables
-        $SummaryStrings = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
     }
 
     process {
 
         # DisplayName
-        $DisplayName = ( $AuditData.Parameters | Where-Object { $_.Name -eq 'DisplayName' } ).Value
-        $SummaryStrings.Add( $DisplayName )
+        $DisplayName = ( $Log.AuditData.Parameters | Where-Object { $_.Name -eq 'DisplayName' } ).Value
+        $SummaryLines.Add( $DisplayName )
 
         # join strings, create return object
-        $SummaryString = $SummaryStrings -join ', '
-        $EventObject = [pscustomobject]@{
-            Summary = $SummaryString
+        $Summary = $SummaryLines -join "`n"
+        $SummaryObject = [pscustomobject]@{
+            Summary = $Summary
         }
 
-        return $EventObject
+        return $SummaryObject
     }
 }

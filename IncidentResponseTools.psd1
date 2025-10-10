@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.4.3'
+    ModuleVersion     = '2.4.4'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -75,7 +75,6 @@
         'exchange\Get-IRTMessageTraceV1.ps1'
         'exchange\Get-MessageTraceWithPaging.ps1'
         'exchange\Get-ExchangeUAAppLogs.ps1'
-        'exchange\Get-SpecificUALogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
         'exchange\Get-IRTInboxRules.ps1'
@@ -90,13 +89,14 @@
         'exchange\Show-UALogs.ps1'
         'exchange\Get-UserUALogs.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryUpdateUser.ps1'
+        'exchange\ual_parsing_functions\Resolve-ExchangeAdminInboxRule.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminSetConditionalAccessPolicy.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemAggregatedAttachmentAccess.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemAggregatedMailItemsAccessed.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemGroupDelete.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemSubject.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemUpdate.ps1'
-        'exchange\ual_parsing_functions\Resolve-SharePointFileOperationFileAccessed.ps1'
+        'exchange\ual_parsing_functions\Resolve-SharePointFileOperation.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointPageViewed.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointSearchQueryPerformed.ps1'
 
@@ -158,7 +158,6 @@
     FunctionsToExport = @(
         ### exchange
         'Get-ExchangeUAAppLogs'
-        'Get-SpecificUALogs'
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
@@ -247,9 +246,6 @@
         'GetUALogs'
         'GetUserUALog'
         'GetUserUALogs'
-        # Get-SpecificUALogs
-        'SpecUALogs'
-        'SpecificUALogs'
         # Get-IRTMessageTrace
         'MessageTrace'
         # Get-IRTMessageTraceV1
