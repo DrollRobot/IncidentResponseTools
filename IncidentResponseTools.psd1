@@ -149,6 +149,7 @@
         'Format-EventDateString.ps1'
         # 'Get-ExchangeAccessToken.ps1'
         'New-InvestigationDirectory.ps1'
+        'PSPythonTools.ps1'
         'Start-IncidentResponsePlaybook.ps1'
         'Start-IncidentResponsePlaybookTEST.ps1'
         # 'Start-IncidentResponsePlaybookNEW.ps1'
