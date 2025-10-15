@@ -29,11 +29,10 @@ function Get-UserUALogs {
         [string[]] $Operations,
         [switch] $RiskyOperations,
 
-        [boolean] $WaitOnMessageTrace = $false,
-
-        [boolean] $Xml = $true,
         [boolean] $Excel = $true,
-        [switch] $Test
+        [switch] $Test,
+        [boolean] $WaitOnMessageTrace = $false,
+        [boolean] $Xml = $true
     )
 
     begin {
@@ -53,7 +52,7 @@ function Get-UserUALogs {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         # $Yellow = @{ ForegroundColor = 'Yellow' }
 
-        if ($Test) {$Global:IRTTestMode = $true}
+        if ($Test) {$Script:Test = $true}
 
         # if users passed via script argument:
         if (($UserObjects | Measure-Object).Count -gt 0) {
@@ -61,7 +60,6 @@ function Get-UserUALogs {
         }
         # if not, look for global objects
         else {
-            
             # get from global variables
             $ScriptUserObjects = Get-GraphGlobalUserObjects
             
@@ -123,6 +121,7 @@ function Get-UserUALogs {
 
         # attempt to parse user input dates into datetime objects
         if ($Start -and $End) {
+            # $DateRangeType = 'Absolute'
             # start - convert user string into object
             try {
                 $StartDate = Get-Date -Date $Start -ErrorAction 'Stop'
@@ -149,15 +148,18 @@ function Get-UserUALogs {
                 }
                 Write-Error @ErrorParams
             }
-            # make sure dates are in correct order
+            # make sure earliest date is the start date
             if ($StartDateUtc -gt $EndDateUtc) {
                 $Temp = $StartDateUtc
                 $StartDateUtc = $EndDateUtc
                 $EndDateUtc = $Temp
             }
+            # set days to match range
+            $Days = [Int]([Math]::Floor( ($EndDate - $StartDate).TotalDays ))
         }
         # create objects based on days
         else {
+            # $DateRangeType = 'Relative'
             # set default value for days ### must be done after checking for relative/absolute arguments
             if (-not $Days) {
                 $Days = 1 #DEFAULTDAYS
@@ -323,10 +325,10 @@ function Get-UserUALogs {
 
             # remove duplicates
             $UniqueLogIds = [System.Collections.Generic.HashSet[string]]::new()
-            $UniqueLogs = [System.Collections.Generic.List[psobject]]::new()
+            $Logs = [System.Collections.Generic.List[psobject]]::new()
             foreach ($Log in $AllLogs) {
                 if ($UniqueLogIds.Add([string]$Log.Identity)) { 
-                    $UniqueLogs.Add($Log) | Out-Null
+                    $Logs.Add($Log) | Out-Null
                 }
             }
 
@@ -342,11 +344,10 @@ function Get-UserUALogs {
                 }
                 return $Result
             }
-            $UniqueLogs.Sort($Comparison)
+            $Logs.Sort($Comparison)
 
             # add metadata to results
-
-            $UniqueLogs.Insert(0,
+            $Logs.Insert(0,
                 [pscustomobject]@{
                     Metadata = $true
                     UserObject = $ScriptUserObject
@@ -362,19 +363,28 @@ function Get-UserUALogs {
 
             #region OUTPUT
 
-            # export to xml
-            if ($Xml) {
-                Write-Host @Blue "`nSaving logs to: ${XmlOutputPath}"
-                $UniqueLogs | Export-Clixml -Depth 10 -Path $XmlOutputPath
-            }
+            # show count, export
+            $LogCount = ($Logs | Measure-Object).Count
+            if ($LogCount -gt 0) {
+                Write-Host @Blue "Retrieved ${LogCount} logs."
 
-            # export excel spreadsheet
-            if ($Excel) {
-                $Params = @{
-                    Logs = $UniqueLogs
-                    WaitOnMessageTrace = $WaitOnMessageTrace
+                # export to xml
+                if ($Xml) {
+                    Write-Host @Blue "`nSaving logs to: ${XmlOutputPath}"
+                    $Logs | Export-Clixml -Depth 10 -Path $XmlOutputPath
                 }
-                Show-UALogs @Params
+
+                # export excel spreadsheet
+                if ($Excel) {
+                    $Params = @{
+                        Logs = $Logs
+                        WaitOnMessageTrace = $WaitOnMessageTrace
+                    }
+                    Show-UALogs @Params
+                }
+            }
+            else {
+                Write-Host @Red "Retrieved 0 logs."
             }
         }
     }

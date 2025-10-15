@@ -21,10 +21,32 @@ function Get-EntraAuditLogs {
         [switch] $All,
         [switch] $Beta,
         [switch] $Script,
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
+
+        #region BEGIN
+
+        # constants
+        # $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+        $FilterStrings = [System.Collections.Generic.List[string]]::new()
+        $XmlPaths = [System.Collections.Generic.List[string]]::new()
+        $DateString = Get-Date -Format "yy-MM-dd_HH-mm"
+        $QueryStart = ( Get-Date ).AddDays( $Days * -1 ).ToString( "yyyy-MM-ddTHH:mm:ssZ" )
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        # $Red = @{ ForegroundColor = 'Red' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
 
         # if -All wasn't user, find user objects
         if ( -not $All ) {
@@ -54,25 +76,9 @@ function Get-EntraAuditLogs {
             )
         }
 
-        # variables
-        $FilterStrings = [System.Collections.Generic.List[string]]::new()
-        $XmlPaths = [System.Collections.Generic.List[string]]::new()
-
-        # get datetime for query
-        $QueryStart = ( Get-Date ).AddDays( $Days * -1 ).ToString( "yyyy-MM-ddTHH:mm:ssZ" )
-
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-
         # get client domain name
         $DefaultDomain = Get-MgDomain | Where-Object { $_.IsDefault -eq $true }
         $DomainName = $DefaultDomain.Id -split '\.' | Select-Object -First 1
-
-        # get date/time string for filename
-        $DateString = Get-Date -Format "yy-MM-dd_HH-mm"
     }
 
     process {
@@ -85,7 +91,7 @@ function Get-EntraAuditLogs {
             $UserId = $ScriptUserObject.Id 
 
             # build file names
-            $XmlOutputPath = "EntraAuditLogs_Raw_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
+            $XmlOutputPath = "EntraAuditLogs_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
 
             # build filter string
             if ( -not $All ) {

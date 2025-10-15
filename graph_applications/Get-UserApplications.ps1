@@ -15,12 +15,31 @@ function Get-UserApplications {
 
         [string] $TableStyle = 'Dark8',
         [boolean] $Xml = $true,
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
 
         #region BEGIN
+
+        # constants
+        # $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $WorksheetName = 'UserAppConsents'
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        $Red = @{ ForegroundColor = 'Red' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
     
         # if not passed directly, find global user object
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
@@ -37,15 +56,6 @@ function Get-UserApplications {
             $ScriptUserObjects = $UserObjects
         }
 
-        #region CONSTANTS
-
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Cyan = @{ ForegroundColor = 'Cyan' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-
         # check if connected to exchange
         try {
             $Exchange = Get-ConnectionInformation
@@ -55,17 +65,13 @@ function Get-UserApplications {
             Write-Host @Red "Not connected to ExchangeOnlineManagement. Consent dates won't be checked."
         }
 
-        # prefetch graph data once
-        $Grants = Request-GraphOauth2Grants
-        $ServicePrincipals = Request-GraphServicePrincipals
-
-        # date formats
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $WorksheetName = 'UserAppConsents'
-
         # get client domain name for file output
         $DefaultDomain = Get-MgDomain | Where-Object { $_.IsDefault -eq $true }
         $DomainName = $DefaultDomain.Id -split '\.' | Select-Object -First 1
+
+        # prefetch graph data once
+        $Grants = Request-GraphOauth2Grants
+        $ServicePrincipals = Request-GraphServicePrincipals
     }
 
     process {

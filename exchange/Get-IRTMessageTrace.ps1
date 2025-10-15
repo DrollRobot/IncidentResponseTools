@@ -21,31 +21,43 @@ function Get-IRTMessageTrace {
         [Parameter( ParameterSetName = 'AllUsers' )]
         [switch] $AllUsers,
 
-        [int] $Days = 10,
+        # relative date range
+        [int] $Days, # default value set at #DEFAULTDAYS
+        # absolute date range
+        # [string] $Start, #FIXME need to update request-irtmessagetrace
+        # [string] $End,
+
         [int] $ResultLimit = 50000,
         [string] $TableStyle = 'Dark8',
         [boolean] $Variable = $true,
-        [boolean] $Xml = $true,
-        [boolean] $Script = $false,
-        [boolean] $Excel = $true
+
+        [boolean] $Excel = $true,
+        [switch] $Test,
+        [boolean] $Xml = $true
     )
 
     begin {
 
         #region BEGIN
 
+        # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $DateString = Get-Date -Format $FileNameDateFormat
         $RawDateProperty = 'Received'
 
         # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-
+        $Blue = @{ForegroundColor = 'Blue'}
+        # $Green = @{ForegroundColor = 'Green'}
+        # $Magenta = @{ForegroundColor = 'Magenta'}
+        # $Red = @{ForegroundColor = 'Red'}
+        # $Yellow = @{ForegroundColor = 'Yellow'}
 
         # create user objects depending on parameters used
         switch ( $ParameterSet ) {
@@ -128,6 +140,83 @@ function Get-IRTMessageTrace {
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
+
+
+        #region DATE RANGE
+
+        # validate only days or (start and end)
+        if ($Days -and ($Start -or $End)) {
+            $ErrorParams = @{
+                Category    = 'InvalidArgument'
+                Message     = "Choose either relative range with -Days or absolute range with -Start and -End."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams  
+        }
+
+        # validate if start or end used, both were used.
+        if (($Start -and -not $End) -or
+            ($End -and -not $Start)
+        ) {
+            $ErrorParams = @{
+                Category    = 'InvalidArgument'
+                Message     = "Specify both -Start and -End"
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams  
+        }
+
+        # attempt to parse user input dates into datetime objects
+        if ($Start -and $End) {
+            $DateRangeType = 'Absolute'
+            # start - convert user string into object
+            try {
+                $StartDate = Get-Date -Date $Start -ErrorAction 'Stop'
+                $StartDateUtc = [DateTime]::SpecifyKind($StartDate, [DateTimeKind]::Local).ToUniversalTime()
+            }
+            catch {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "-Start invalid. Use format 'MM/dd/yy hh:mm(tt)"
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+            # end - convert user string into object
+            try {
+                $EndDate = Get-Date -Date $End -ErrorAction 'Stop'
+                $EndDateUtc = [DateTime]::SpecifyKind($EndDate, [DateTimeKind]::Local).ToUniversalTime()
+            }
+            catch {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "-End invalid. Use format 'MM/dd/yy hh:mm(tt)"
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+            # make sure earliest date is the start date
+            if ($StartDateUtc -gt $EndDateUtc) {
+                $Temp = $StartDateUtc
+                $StartDateUtc = $EndDateUtc
+                $EndDateUtc = $Temp
+            }
+            # set days to match range
+            $Days = [Int]([Math]::Floor( ($EndDate - $StartDate).TotalDays ))
+        }
+        # create objects based on days
+        else {
+            $DateRangeType = 'Relative'
+            # set default value for days ### must be done after checking for relative/absolute arguments
+            if (-not $Days) {
+                $Days = 30 #DEFAULTDAYS
+                # FIXME defaulting to 30 days because of api bug related to filters
+                # https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3146#issuecomment-2752675332
+            }
+
+            $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime()
+            $EndDateUtc = (Get-Date).ToUniversalTime()
+        }
     }
 
     process {
@@ -159,7 +248,7 @@ function Get-IRTMessageTrace {
                 Write-Host @Blue "Requesting message trace records with sender: ${UserEmail}"
                 $Params = @{
                     SenderAddress = $UserEmail
-                    Days = $Days
+                    Days = $Days #FIXME convert to start and end dates.
                     ResultLimit = $ResultLimit
                 }
                 $SenderTrace = Request-IRTMessageTrace @Params
@@ -232,23 +321,23 @@ function Get-IRTMessageTrace {
                     # do nothing
                 }
                 else {
-                    # export raw message trace
-                    $VariableName = "IRT_MessageTrace_${UserName}"
-                    Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
-                    $VariableParams = @{
-                        Name = $VariableName
-                        Value = $MessageTrace
-                        Scope = 'Global'
-                        Force = $True
-                    }
-                    New-Variable @VariableParams
+                    # # export raw message trace
+                    # $VariableName = "IRT_MessageTrace_${UserName}"
+                    # Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
+                    # $VariableParams = @{
+                    #     Name = $VariableName
+                    #     Value = $MessageTrace
+                    #     Scope = 'Global'
+                    #     Force = $True
+                    # }
+                    # New-Variable @VariableParams
 
                     # export table by internetmessageid
                     $Table = @{}
-                    foreach ($Trace in $MessageTrace) {
-                        if (-not $Trace.Metadata) {
-                            $InternetMessageId = $Trace.MessageId
-                            $Table[$InternetMessageId] = $Trace
+                    foreach ($Message in $MessageTrace) {
+                        if (-not $Message.Metadata) {
+                            $InternetMessageId = $Message.MessageId
+                            $Table[$InternetMessageId] = $Message
                         }
                     }
                     $VariableName = "IRT_MessageTraceTable_${UserName}"
@@ -276,7 +365,7 @@ function Get-IRTMessageTrace {
 
             # create excel sheet
             if ($Excel) {
-                Show-IRTMessageTrace -TraceObjects $MessageTrace
+                Show-IRTMessageTrace -Messages $MessageTrace
             }
         }
     }

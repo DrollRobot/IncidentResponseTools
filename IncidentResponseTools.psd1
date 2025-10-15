@@ -73,7 +73,7 @@
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules     = @(
         'exchange\Get-IRTMessageTraceV1.ps1'
-        'exchange\Get-MessageTraceWithPaging.ps1'
+        'exchange\Request-IRTMessageTraceV1.ps1'
         'exchange\Get-ExchangeUAAppLogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
@@ -106,7 +106,7 @@
         'graph_applications\Save-ServicePrincipalData.ps1'
         'graph_applications\Show-Applications.ps1'
 
-        'graph_logs\Add-HumanErrorDescription.ps1'
+        'graph_logs\ConvertTo-HumanErrorDescription.ps1'
         'graph_logs\Add-HumanReadableId.ps1'
         'graph_logs\Get-AllSignInLogs.ps1'
         'graph_logs\Get-EntraAuditLogs.ps1'
@@ -115,7 +115,6 @@
         'graph_logs\Group-ByCorrelationId.ps1'
         'graph_logs\Import-LogFile.ps1'
         'graph_logs\Show-EntraAuditLogs.ps1'
-        'graph_logs\Show-SignInLog.ps1'
         'graph_logs\Show-SignInLogs.ps1'
 
         'graph_roles\Get-AdminRoles.ps1'
@@ -145,14 +144,15 @@
         'graph\Request-GraphUsers.ps1'
         'graph\Show-GraphGeoBlockPolicy.ps1'
 
+        'tools\PSPythonTools.ps1'
+        'tools\Convert-DecimalToExcelColumn.ps1'
+
         'Compress-InvestigationFolders.ps1'
         'Format-EventDateString.ps1'
         # 'Get-ExchangeAccessToken.ps1'
         'New-InvestigationDirectory.ps1'
-        'PSPythonTools.ps1'
         'Start-IncidentResponsePlaybook.ps1'
-        'Start-IncidentResponsePlaybookTEST.ps1'
-        # 'Start-IncidentResponsePlaybookNEW.ps1'
+        # 'Start-IncidentResponsePlaybookExToken.ps1'
     )
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
@@ -227,7 +227,7 @@
         'Start-IncidentResponsePlaybookOLD'
         'Start-IncidentResponsePlaybook'
         'Start-IncidentResponsePlaybookTEST'
-        # 'Start-IncidentResponsePlaybookNEW'
+        # 'Start-IncidentResponsePlaybookExToken'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

@@ -19,7 +19,8 @@ function Get-IRTInboxRules {
         [psobject[]] $UserObjects,
 
         [string] $TableStyle = 'Dark8',
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
@@ -27,7 +28,13 @@ function Get-IRTInboxRules {
         #region BEGIN
 
         # constants
-        $Function = $MyInvocation.MyCommand.Name
+        # $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $WorksheetName = 'InboxRules'
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $FileDateString = Get-Date -Format $FileNameDateFormat

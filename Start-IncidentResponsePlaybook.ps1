@@ -30,10 +30,6 @@ function Start-IncidentResponsePlaybook {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
-       if ($Test) {
-            $Global:IRTTestMode = $true
-        }
-
         # if users passed via script argument:
         if (($UserObjects | Measure-Object).Count -gt 0) {
             $ScriptUserObjects = $UserObjects

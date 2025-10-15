@@ -23,7 +23,8 @@ function Get-IRTMessageTraceV1 {
         [int] $Days = 10,
         [int] $PageLimit = 10, # 1000 is server-side page limit, 200 represents 1m lines, the max for excel
         [string] $TableStyle = 'Dark8',
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
@@ -33,6 +34,11 @@ function Get-IRTMessageTraceV1 {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $StartDate = ( Get-Date ).AddDays( $Days * -1 )
         $EndDate = Get-Date
         $WorksheetName = 'MessageTrace'
@@ -54,7 +60,6 @@ function Get-IRTMessageTraceV1 {
             'MessageTraceId'
             'MessageId'
         )
-
         $OutputTable = [System.Collections.Generic.List[psobject]]::new()
 
         # colors
@@ -62,7 +67,6 @@ function Get-IRTMessageTraceV1 {
         # $Green = @{ ForegroundColor = 'Green' }
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
-
 
         switch ( $ParameterSet ) {
             'UserObjects' {
@@ -176,7 +180,7 @@ function Get-IRTMessageTraceV1 {
                     EndDate = $EndDate
                     PageLimit = $PageLimit
                 }
-                $SenderTrace = Get-MessageTraceWithPaging @Params
+                $SenderTrace = Request-IRTMessageTraceV1 @Params
 
                 # get recipient records
                 Write-Host @Blue "Getting message trace records with recipient: ${UserEmail}"
@@ -186,7 +190,7 @@ function Get-IRTMessageTraceV1 {
                     EndDate = $EndDate
                     PageLimit = $PageLimit
                 }
-                $RecipientTrace = Get-MessageTraceWithPaging @Params
+                $RecipientTrace = Request-IRTMessageTraceV1 @Params
 
                 # if both traces have results
                 if ( @( $SenderTrace ).Count -gt 0 -and @( $RecipientTrace ).Count -gt 0 ) {
@@ -222,7 +226,7 @@ function Get-IRTMessageTraceV1 {
                     EndDate = $EndDate
                     PageLimit = $PageLimit
                 }
-                $OutputTable = Get-MessageTraceWithPaging @Params
+                $OutputTable = Request-IRTMessageTraceV1 @Params
             }
 
             #region ROW LOOP

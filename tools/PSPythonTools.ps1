@@ -42,7 +42,7 @@ function Test-PythonPackage {
             # prefer 'python', then 'python3', then 'py -3' on windows
             $Candidates = @(
                 @{ 
-                    Cmd = (Get-Command -Name 'python'  -ErrorAction SilentlyContinue)?.Source
+                    Cmd = (Get-Command -Name 'python' -ErrorAction SilentlyContinue)?.Source
                     PrefixArgs = @()
                 }
                 @{ 
@@ -50,7 +50,7 @@ function Test-PythonPackage {
                     PrefixArgs = @()
                 }
                 @{ 
-                    Cmd = (Get-Command -Name 'py'      -ErrorAction SilentlyContinue)?.Source
+                    Cmd = (Get-Command -Name 'py' -ErrorAction SilentlyContinue)?.Source
                     PrefixArgs = @('-3') 
                 }
             ) | Where-Object { $_.Cmd }

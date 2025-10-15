@@ -18,7 +18,8 @@ function Get-ExchangeUAAppLogs {
 
         [int] $Days = 3,
         [boolean] $Xml = $true,
-        [switch] $NoOpen
+        [switch] $NoOpen,
+        [switch] $Test
     )
 
     begin {
@@ -27,6 +28,12 @@ function Get-ExchangeUAAppLogs {
 
         # constants
         $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $DateString = Get-Date -Format $FileNameDateFormat
 

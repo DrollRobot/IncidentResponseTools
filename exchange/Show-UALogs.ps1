@@ -18,6 +18,7 @@ function Show-UALogs {
         [string] $TableStyle = 'Dark8',
         [boolean] $Xml = $true,
         [boolean] $WaitOnMessageTrace = $false,
+        [boolean] $IpInfo = $true,
         [switch] $Test
     )
 
@@ -28,20 +29,21 @@ function Show-UALogs {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $RawDateProperty = 'CreationDate'
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $TitleDateFormat = "M/d/yy h:mmtt"
         $DateColumnHeader = 'DateTime'
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Green = @{ ForegroundColor = 'Green' }
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
-
-        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
-
-        if ($Test) {$Global:IRTTestMode = $true}
+        $Yellow = @{ ForegroundColor = 'Yellow' }
         
         # import from xml
         if ($ParameterSet -eq 'Xml') {
@@ -62,14 +64,15 @@ function Show-UALogs {
         # $ServicePrincipals = Request-GraphServicePrincipals
         # $Users = Request-GraphUsers
 
-        # import metadata
+        #region METADATA
+
         if ($Logs[0].Metadata) {
 
             # remove metadata from beginning of list
             $Metadata = $Logs[0]
             $Logs.RemoveAt(0)
 
-            $UserEmail = $Metadata.UserEmail
+            # $UserEmail = $Metadata.UserEmail
             $UserName = $Metadata.UserName
             $StartDate = $Metadata.StartDate
             $EndDate = $Metadata.EndDate
@@ -82,13 +85,15 @@ function Show-UALogs {
         }
 
         # build file name
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
         $ExcelOutputPath =  "${FileNamePrefix}_${Days}Days_${UserName}_${FileDateString}.xlsx"
 
         # build worksheet title
+        $TitleDateFormat = "M/d/yy h:mmtt"
         $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
         $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
-        $WorksheetTitle = "Unified audit logs for ${UserEmail}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
+        $WorksheetTitle = "Unified audit logs for ${Username}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
 
         # import alloperations csv
         $ModulePath = $PSScriptRoot
@@ -96,33 +101,94 @@ function Show-UALogs {
         $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
         $OperationsCsvData = Import-Csv -Path $OperationsCsvPath
 
-        if ($Global:IRTTestMode) {
-            # build set of operations from csv
+        # test
+        if ($Script:Test) {
+            # build set of operations from csv to later output missing operations
             $OperationsFromCsv = [System.Collections.Generic.Hashset[string]]::new() 
             foreach ($Row in $OperationsCsvData) {
                 [void]$OperationsFromCsv.Add("$($Row.Workload)|$($Row.RecordType)|$($Row.Operation)")
             }
-           $OperationsFromLog = [System.Collections.Generic.Hashset[string]]::new() 
+           $OperationsFromLog = [System.Collections.Generic.Hashset[string]]::new()
+
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+
+        # ipinfo
+        if ($IpInfo) {
+
+            $IpInfoAddresses = [System.Collections.Generic.HashSet[string]]::new()
+
+            # check for presence of ip_info package
+            $IpInfoPackage = Test-PythonPackage -Name 'ip_info'
         }
     }
 
     process {
 
-        # convert audit data to powershell objects
+        #region FIRST LOOP
+
         foreach ($Log in $Logs) {
+            # convert audit data to powershell objects
             $Log.AuditData = $Log.AuditData | ConvertFrom-Json -Depth 10
+
+            # collect ip addresses
+            if ($IpInfo) {
+                if ( $Log.AuditData.ClientIP ) {
+                    foreach ($Ip in $Log.AuditData.ClientIP) {[void]$IpInfoAddresses.Add($Ip)}
+                }
+                if ( $Log.AuditData.ActorIpAddress ) {
+                    foreach ($Ip in $Log.AuditData.ActorIpAddress) {[void]$IpInfoAddresses.Add($Ip)}
+                }
+                if ( $Log.AuditData.ClientIPAddress ) {
+                    foreach ($Ip in $Log.AuditData.ClientIPAddress) {[void]$IpInfoAddresses.Add($Ip)}
+                } 
+            }
         }
 
-        #region ROW LOOP
+        #region QUERY IPS
+        if ($IpInfo -and 
+            $IpInfoPackage.Present -and
+            ($IpInfoAddresses | Measure-Object).Count -gt 0
+        ) {
 
-        # process each log
+            # query information for all IP addresses
+            $IpQueryStart = $Stopwatch.Elapsed
+            & $IpInfoPackage.Python ip_info --apis bulk --output_format none -ip_addresses $IpInfoAddresses
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $IpQueryStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: ip_info query took ${ElapsedString}" | Out-Host
+            }
+
+            # add ip info to global colection
+            $IpTableStart = $Stopwatch.Elapsed
+            if (($Global:IRT_IpInfo | Measure-Object).Count -eq 0) {
+                $Global:IRT_IpInfo = @{}
+            }
+            foreach ($Ip in $IpInfoAddresses) {
+                # convert to object
+                $Ip = [System.Net.IPAddress]$Ip
+                # if ip doesn't exist in table, add it.
+                if (-not $Global:IRT_IpInfo[$Ip]) {
+                    $Output = & $IpInfoPackage.Python ip_info $Ip.ToString
+                    $Global:IRT_IpInfo[$Ip] = $Output
+                }
+            }
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $IpTableStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: adding ip info to global table took ${ElapsedString}" | Out-Host
+            }
+        }
+
+        #region SECOND LOOP
+
         for ($i = 0; $i -lt ($Logs | Measure-Object).Count; $i++) { 
         
             $Log = $Logs[$i]
             $Row = [PSCustomObject]@{}
 
             # save operations to create complete list
-            if ($Global:IRTTestMode) {
+            if ($Script:Test) {
                 [void]$OperationsFromLog.Add(
                     "$($Log.AuditData.Workload)|$($Log.AuditData.RecordType)|$($Log.AuditData.Operation)"
                 )
@@ -198,7 +264,7 @@ function Show-UALogs {
             }
             $Row | Add-Member @AddParams
 
-            # # find operation friendly name # FIXME not needed?
+            # # find operation friendly name # FIXME friendly names not useful?
             # $OperationsRow = $OperationsCsvData | Where-Object { $_.Operation -eq $Log.Operations }
             # $OperationFriendlyName = if (-not [string]::IsNullOrWhiteSpace($OperationsRow.CustomDescription)) {
             #     $OperationsRow.CustomDescription
@@ -217,23 +283,42 @@ function Show-UALogs {
             # $Row | Add-Member @AddParams
 
             #region IP ADDRESSES
-            $IpAddresses = [System.Collections.Generic.Hashset[string]]::new()
-            if ( $AuditData.ClientIP ) {
-                foreach ($Ip in $AuditData.ClientIP) {[void]$IpAddresses.Add($Ip)}
+
+            # collect ips
+            $IpAddresses = [System.Collections.Generic.Hashset[System.Net.IPAddress]]::new()
+            if ( $Log.AuditData.ClientIP ) {
+                foreach ($i in $Log.AuditData.ClientIP) {[void]$IpAddresses.Add($i)}
             }
-            if ( $AuditData.ActorIpAddress ) {
-                foreach ($Ip in $AuditData.ActorIpAddress) {[void]$IpAddresses.Add($Ip)}
+            if ( $Log.AuditData.ActorIpAddress ) {
+                foreach ($i in $Log.AuditData.ActorIpAddress) {[void]$IpAddresses.Add($i)}
             }
-            if ( $AuditData.ClientIPAddress ) {
-                foreach ($Ip in $AuditData.ClientIPAddress) {[void]$IpAddresses.Add($Ip)}
+            if ( $Log.AuditData.ClientIPAddress ) {
+                foreach ($i in $Log.AuditData.ClientIPAddress) {[void]$IpAddresses.Add($i)}
             }
-            $IpString = $IpAddresses -join "`n"
+            # loop through rows, replace with ip info
+            if (($IpAddresses | Measure-Object).Count -gt 0) {
+
+                # build cell text
+                $Strings = [System.Collections.Generic.List[string]]::new()
+                $Strings.Add(($IpAddresses.ToString() | Sort-Object) -join ', ')
+
+                # add info from table
+                foreach ($Ip in $IpAddresses) {
+                    $Strings.Add($Global:IRT_IpInfo[[System.Net.IPAddress]$Ip]) 
+                }
+            }
+            $Cell = $Strings -join "`n`n"
             $AddParams = @{
                 MemberType = 'NoteProperty'
                 Name       = 'IpAddresses'
-                Value      = $IpString
+                Value      = $Cell
             }
             $Row | Add-Member @AddParams
+
+            # add ip addresses to hashset for ip_info
+            if ($IpInfo) {
+                foreach ($i in $IpInfoAddresses) {[void]$IpInfoAddresses.Add($i)}
+            }
 
             #region SUMMARY
             $RecordType = $Log.RecordType
@@ -437,7 +522,7 @@ function Show-UALogs {
 
         # resize IpAddresses column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'IpAddresses' } ).Id 
-        $Worksheet.Column($Column).Width = 16
+        $Worksheet.Column($Column).Width = 20
 
         # # resize OperationFriendlyName column # FIXME
         # $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'OperationFriendlyName' } ).Id 
@@ -484,7 +569,7 @@ function Show-UALogs {
 
         #region OUTPUT
 
-        if ($Global:IRTTestMode) {
+        if ($Script:Test) {
             $OperationsToAdd = [System.Collections.Generic.HashSet[PSCustomObject]]::new() 
             # find operations from log that are missing in csv
             foreach ($o in $OperationsFromLog) {
@@ -501,9 +586,9 @@ function Show-UALogs {
             }
             # output for user
             if (($OperationsToAdd | Measure-Object).Count -gt 0) {
-                Write-Host @Red "Add to ${AllOperationsFileName}:"
+                Write-Host @Yellow "${Function}: Add to ${AllOperationsFileName}:" | Out-Host
                 $OperationsToAdd | Format-Table | Out-Host
-                Write-Host @Red "Exporting to: operations_to_add.csv"
+                Write-Host @Yellow "${Function}: Exporting to: operations_to_add.csv" | Out-Host
                 $OperationsToAdd | Export-Csv -Path "operations_to_add.csv" -NoTypeInformation
             }
         }

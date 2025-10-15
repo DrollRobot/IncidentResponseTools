@@ -12,7 +12,8 @@ function Show-MailboxAccess {
     param (
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
-        [psobject[]] $UserObjects
+        [psobject[]] $UserObjects,
+        [switch] $Test
     )
 
     begin {
@@ -21,6 +22,12 @@ function Show-MailboxAccess {
 
         # constants
         $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -28,6 +35,8 @@ function Show-MailboxAccess {
         # $Green = @{ ForegroundColor = 'Green' }
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+        # $Yellow = @{ ForegroundColor = 'Yellow' }
+
 
         # if users passed via script argument:
         if (($UserObjects | Measure-Object).Count -gt 0) {

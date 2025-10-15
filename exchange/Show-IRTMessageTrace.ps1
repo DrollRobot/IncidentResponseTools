@@ -9,13 +9,15 @@ function Show-IRTMessageTrace {
     [CmdletBinding( DefaultParameterSetName = 'Objects' )]
     param (
         [Parameter(Position = 0, Mandatory, ValueFromPipeline, ParameterSetName = 'Objects')]
-        [Alias( 'TraceObject' )]
-        [System.Collections.Generic.List[PSObject]] $TraceObjects,
+        [Alias( 'Message' )]
+        [System.Collections.Generic.List[PSObject]] $Messages,
 
         [Parameter(Position = 0, Mandatory, ParameterSetName = 'Xml')]
         [string] $XmlPath,
 
-        [string] $TableStyle = 'Dark8'
+        [string] $TableStyle = 'Dark8',
+
+        [switch] $Test
     )
 
     begin {
@@ -25,6 +27,11 @@ function Show-IRTMessageTrace {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $WorksheetName = 'MessageTrace'
         $TitleDateFormat = "M/d/yy h:mmtt"
         $RawDateProperty = 'Received'
@@ -35,39 +42,56 @@ function Show-IRTMessageTrace {
         # $Green = @{ ForegroundColor = 'Green' }
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+        $Yellow = @{ ForegroundColor = 'Yellow' }
+
+        if ($Test) {}
 
         # import from xml
         if ($ParameterSet -eq 'Xml') {
+            if ($Script:Test) {
+                $TestText = "Importing from Xml"
+                $TimerStart = $Stopwatch.Elapsed
+                Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+            }
+
             try {
                 $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
-                $TraceObjects = Import-CliXml -Path $ResolvedXmlPath
+                [System.Collections.Generic.List[PSObject]]$Messages = Import-CliXml -Path $ResolvedXmlPath
             }
             catch {
                 $_
                 Write-Host @Red "${Function}: Error importing from ${XmlPath}."
                 return
             }
+
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+            }
         }
 
         # import metadata
-        if ($TraceObjects[0].Metadata) {
+        if ($Messages[0].Metadata) {
 
             # remove metadata from beginning of list
-            $Metadata = $TraceObjects[0]
-            $TraceObjects.RemoveAt(0)
+            $Metadata = $Messages[0]
+            $Messages.RemoveAt(0)
 
             $UserEmail = $Metadata.UserEmail
             $UserName = $Metadata.UserName
             $StartDate = $Metadata.StartDate
             $EndDate = $Metadata.EndDate
             $Days = $Metadata.Days
+            $DomainName = $Metadata.DomainName
         }
         else {
             Write-Error "${Function}: No Metadata found."
         }
 
         # build file name
-        $ExcelOutputPath = "MessageTrace_${Days}Days_${UserName}_${DateString}.xlsx"
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
+        $ExcelOutputPath = "MessageTrace_${Days}Days_${UserName}_${FileDateString}.xlsx"
 
         # build worksheet title
         $StartString = $StartDate.ToString($TitleDateFormat).ToLower()
@@ -84,103 +108,66 @@ function Show-IRTMessageTrace {
 
         #region ROW LOOP
 
-        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
-        for ($i = 0; $i -lt ($TraceObjects | Measure-Object).Count; $i++) {
+        if ($Script:Test) {
+            $TestText = "Row loop"
+            $TimerStart = $Stopwatch.Elapsed
+            Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+        }
 
-            $Message = $TraceObjects[$i]
-            $Row = [PSCustomObject]@{}
+        $RowCount = $Messages.Count
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new($RowCount)
+        for ($i = 0; $i -lt $RowCount; $i++) {
+
+            $Message = $Messages[$i]
 
             # Raw
             $Raw = $Message | ConvertTo-Json -Depth 10
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Raw'
-                Value      = $Raw
-            }
-            $Row | Add-Member @AddParams
 
-            # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Message.$RawDateProperty
-            }
-            $Row | Add-Member @AddParams
+            $Rows.Add([pscustomobject]@{
+                Raw               = $Raw
+                $DateColumnHeader = (Format-EventDateString $Message.$RawDateProperty)
+                Status            = $Message.Status
+                SenderAddress     = $Message.SenderAddress
+                RecipientAddress  = $Message.RecipientAddress
+                Subject           = $Message.Subject
+                FromIP            = $Message.FromIP
+                ToIP              = $Message.ToIP
+                MessageTraceId    = $Message.MessageTraceId
+                MessageId         = $Message.MessageId
+            })
 
-            # Status
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Status'
-                Value      = $Message.Status
+            if ($Script:Test -and ($i % 1000 -eq 0)) {
+                $Percent = [int]( ($i / $RowCount ) * 100 )
+                $ProgressParams = @{
+                    Id              = 1
+                    Activity        = 'Row loop'
+                    Status          = "Completed ${i} of ${RowCount}"
+                    PercentComplete = $Percent
+                }
+                Write-Progress @ProgressParams
             }
-            $Row | Add-Member @AddParams
-
-            # SenderAddress
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'SenderAddress'
-                Value      = $Message.SenderAddress
-            }
-            $Row | Add-Member @AddParams
-
-            # RecipientAddress
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'RecipientAddress'
-                Value      = $Message.RecipientAddress
-            }
-            $Row | Add-Member @AddParams
-
-            # Subject
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Subject'
-                Value      = $Message.Subject
-            }
-            $Row | Add-Member @AddParams
-
-            # FromIP
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'FromIP'
-                Value      = $Message.FromIP
-            }
-            $Row | Add-Member @AddParams
-
-            # ToIP
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'ToIP'
-                Value      = $Message.ToIP
-            }
-            $Row | Add-Member @AddParams
-
-            # MessageTraceId
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'MessageTraceId'
-                Value      = $Message.MessageTraceId
-            }
-            $Row | Add-Member @AddParams
-
-            # MessageId
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'MessageId'
-                Value      = $Message.MessageId
-            }
-            $Row | Add-Member @AddParams
-
-            $Rows.Add($Row)
         }
 
-        # export spreadsheet
+        if ($Script:Test) {
+            Write-Progress -Id 1 -Activity 'Row loop' -Completed
+
+            $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+            Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+        }
+
+        #region EXPORT EXCEL
+        if ($Script:Test) {
+            $TestText = "Exporting to excel"
+            $TimerStart = $Stopwatch.Elapsed
+            Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+        }
+
         $ExcelParams = @{
             Path          = $ExcelOutputPath
             WorkSheetname = $WorksheetName
             Title         = $WorksheetTitle
             TableStyle    = $TableStyle
-            AutoSize      = $true
+            # AutoSize      = $true # apparently very slow?
             FreezeTopRow  = $true
             Passthru      = $true
         }
@@ -200,80 +187,159 @@ function Show-IRTMessageTrace {
         }
         $Worksheet = $Workbook.Workbook.Worksheets[$ExcelParams.WorksheetName]
 
+        if ($Script:Test) {
+            $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+            Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+        }
+
         # get table ranges
         $SheetStartColumn = $WorkSheet.Dimension.Start.Column | Convert-DecimalToExcelColumn
         $SheetStartRow = $WorkSheet.Dimension.Start.Row
-        $TableStartColumn = ( $workSheet.Tables.Address | Select-Object -First 1 ).Start.Column | Convert-DecimalToExcelColumn
-        $TableStartRow = $Worksheet.Tables[0].Address.Start.Row + 1
+        $TableStartColumn = ($Worksheet.Tables.Address | Select-Object -First 1).Start.Column | Convert-DecimalToExcelColumn
+        $TableStartRow = ($Worksheet.Tables | Select-Object -First 1).Address.Start.Row + 1
         $EndColumn = $WorkSheet.Dimension.End.Column | Convert-DecimalToExcelColumn
         $EndRow = $WorkSheet.Dimension.End.Row
 
-        #region SAME TO/FROM
-        # highlight where sender and recipient are the same
-        $SenderColumn = ( $Worksheet.Tables[0].Columns | 
-            Where-Object { $_.Name -eq 'SenderAddress' } ).Id | 
-            Convert-DecimalToExcelColumn
-        $RecipientColumn = ( $Worksheet.Tables[0].Columns | 
-            Where-Object { $_.Name -eq 'RecipientAddress' } ).Id | 
-            Convert-DecimalToExcelColumn
+        $SenderColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'SenderAddress'}).Id | Convert-DecimalToExcelColumn
+        $RecipientColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'RecipientAddress'}).Id | Convert-DecimalToExcelColumn
 
-        for ($Row = $TableStartRow; $Row -le $EndRow; $Row++) {
+        #region BOLD OTHER EMAIL
 
-            $SenderAddress = $Worksheet.Cells[$SenderColumn + $Row].Text
-            $RecipientAddress = $Worksheet.Cells[$RecipientColumn + $Row].Text
-
-            # highlight where sender and recipient are the same
-            if ($SenderAddress -eq $RecipientAddress) {
-                $ColorParams = @{
-                    Worksheet = $Worksheet
-                    Range = $SenderColumn + $Row + ":" + $RecipientColumn + $Row
-                    BackgroundColor = 'LightPink'
-                }
-                Set-ExcelRange @ColorParams
+        if ($UserEmail) {
+            $CfParamsSender = @{
+                WorkSheet        = $Worksheet
+                Address          = "${SenderColumn}${TableStartRow}:${SenderColumn}${EndRow}"
+                RuleType         = 'NotEqual'
+                ConditionValue   = $UserEmail
+                Style          = @{Bold = $true}
             }
+            Add-ConditionalFormatting @CfParamsSender
 
-            # bold user email, if not -AllUsers
-            if ( $ScriptUserObject.UserPrincipalName ) {
-                if ( $SenderAddress -ne $ScriptUserObject.UserPrincipalName ) {
-                    $BoldParams = @{
-                        Worksheet = $Worksheet
-                        Range = $SenderColumn + $Row
-                        Bold = $true
-                    }
-                    Set-ExcelRange @BoldParams
-                }
-                if ( $RecipientAddress -ne $ScriptUserObject.UserPrincipalName ) {
-                    $BoldParams = @{
-                        Worksheet = $Worksheet
-                        Range = $RecipientColumn + $Row
-                        Bold = $true
-                    }
-                    Set-ExcelRange @BoldParams
-                }
+            $CfParamsRecipient = @{
+                WorkSheet        = $Worksheet
+                Address          = "${RecipientColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
+                RuleType         = 'NotEqual'
+                ConditionValue   = $UserEmail
+                Style          = @{Bold = $true}
             }
+            Add-ConditionalFormatting @CfParamsRecipient
         }
+
+        #region SAME TO/FROM
+
+        $CfParams = @{
+            WorkSheet        = $Worksheet
+            Address          = "${SenderColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
+            RuleType         = 'Expression'
+            ConditionValue   = "=`$${SenderColumn}${TableStartRow}=`$${RecipientColumn}${TableStartRow}"
+            BackgroundColor  = 'LightYellow'
+        }
+        Add-ConditionalFormatting @CfParams
+
+
+        # # highlight where sender and recipient are the same
+        # if ($Script:Test) {
+        #     $TestText = "Highlight message with same to/from"
+        #     $TimerStart = $Stopwatch.Elapsed
+        #     Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+        # }
+
+        # $SenderColumn = ( $Worksheet.Tables[0].Columns | 
+        #     Where-Object { $_.Name -eq 'SenderAddress' } ).Id | 
+        #     Convert-DecimalToExcelColumn
+        # $RecipientColumn = ( $Worksheet.Tables[0].Columns | 
+        #     Where-Object { $_.Name -eq 'RecipientAddress' } ).Id | 
+        #     Convert-DecimalToExcelColumn
+
+        # $RowCount = $EndRow - $TableStartRow
+
+        # for ($i = $TableStartRow; $i -le $EndRow; $i++) {
+
+        #     $SenderAddress = $Worksheet.Cells[$SenderColumn + $i].Text
+        #     $RecipientAddress = $Worksheet.Cells[$RecipientColumn + $i].Text
+
+        #     # highlight where sender and recipient are the same
+        #     if ($SenderAddress -eq $RecipientAddress) {
+        #         $ColorParams = @{
+        #             Worksheet = $Worksheet
+        #             Range = $SenderColumn + $i + ":" + $RecipientColumn + $i
+        #             BackgroundColor = 'LightYellow'
+        #         }
+        #         Set-ExcelRange @ColorParams
+        #     }
+
+        #     # bold user email, if not -AllUsers
+        #     if ( $ScriptUserObject.UserPrincipalName ) {
+        #         if ( $SenderAddress -ne $ScriptUserObject.UserPrincipalName ) {
+        #             $BoldParams = @{
+        #                 Worksheet = $Worksheet
+        #                 Range = $SenderColumn + $i
+        #                 Bold = $true
+        #             }
+        #             Set-ExcelRange @BoldParams
+        #         }
+        #         if ( $RecipientAddress -ne $ScriptUserObject.UserPrincipalName ) {
+        #             $BoldParams = @{
+        #                 Worksheet = $Worksheet
+        #                 Range = $RecipientColumn + $i
+        #                 Bold = $true
+        #             }
+        #             Set-ExcelRange @BoldParams
+        #         }
+        #     }
+
+        # if ($Script:Test -and ($i % 1000 -eq 0)) {
+        #         $Percent = [int]( ($i / $RowCount ) * 100 )
+        #         $ProgressParams = @{
+        #             Id              = 1
+        #             Activity        = 'Same to/from loop'
+        #             Status          = "Completed ${i} of ${RowCount}"
+        #             PercentComplete = $Percent
+        #         }
+        #         Write-Progress @ProgressParams
+        #     }
+        # }
+
+        # if ($Script:Test) {
+        #     Write-Progress -Id 1 -Activity 'Row loop' -Completed
+
+        #     $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+        #     Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+        # }
 
         #region COLUMN WIDTH
 
-        # resize DateTime column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
-        $Worksheet.Column($Column).Width = 26
-
-        # resize Raw column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
         $Worksheet.Column($Column).Width = 8
 
-        # resize MessageTraceId column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
+        $Worksheet.Column($Column).Width = 26
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Status' } ).Id 
+        $Worksheet.Column($Column).Width = 15
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'SenderAddress' } ).Id 
+        $Worksheet.Column($Column).Width = 30
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'RecipientAddress' } ).Id 
+        $Worksheet.Column($Column).Width = 30
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Subject' } ).Id 
+        $Worksheet.Column($Column).Width = 100
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'FromIp' } ).Id 
+        $Worksheet.Column($Column).Width = 20
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'ToIp' } ).Id 
+        $Worksheet.Column($Column).Width = 20
+
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'MessageTraceId' } ).Id
         $Worksheet.Column($Column).Width = 20
 
-        #region FORMATTING
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'MessageTraceId' } ).Id
+        $Worksheet.Column($Column).Width = 200
 
-        # # set row height
-        # for ( $i = $TableStartRow; $i -le $EndRow; $i++ ) {  
-        #     $workSheet.Row($i).CustomHeight = 15
-        # }
-        # FIXME maybe not needed?
+        #region FORMATTING
 
         # set font and size
         $SetParams = @{
@@ -297,5 +363,10 @@ function Show-IRTMessageTrace {
         # save and close
         Write-Host @Blue "${Function}: Exporting to: ${ExcelOutputPath}"
         $Workbook | Close-ExcelPackage -Show
+
+        if ($Script:Test) {
+            $ElapsedString = ($StopWatch.Elapsed).ToString('mm\:ss')
+            Write-Host @Yellow "${Function} took ${ElapsedString}" | Out-Host
+        }
     }
 }

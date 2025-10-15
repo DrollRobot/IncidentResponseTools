@@ -11,27 +11,23 @@ function Show-Mailbox {
     param(
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
-        [psobject[]] $UserObjects
+        [psobject[]] $UserObjects,
+        
+        [switch] $Test
     )
 
     begin {
 
-        # if not passed directly, find global
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
+        #region BEGIN
 
-            # get from global variables
-            $ScriptUserObjects = Get-GraphGlobalUserObjects
-
-            # if none found, exit
-            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
-            }
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
-        else {
-            $ScriptUserObjects = $UserObjects
-        }
-
-        # variables
         # $PermissionsList = [System.Collections.Generic.List[pscustomobject]]::new()
         $GuidPattern = '\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b'
 
@@ -40,6 +36,31 @@ function Show-Mailbox {
         # $Green = @{ ForegroundColor = 'Green' }
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
+            # get from global variables
+            $ScriptUserObjects = Get-GraphGlobalUserObjects
+            
+            # if none found, exit
+            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
+            }
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+        }
     }
 
     process {
