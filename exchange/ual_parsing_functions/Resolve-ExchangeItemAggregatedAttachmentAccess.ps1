@@ -9,21 +9,25 @@ function Resolve-ExchangeItemAggregatedAttachmentAccess {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
 
         # variables
-        # $SummaryStrings = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
     }
 
     process {
 
         # need to lookup email by ID.
+        #FIXME
+
+        # join strings, create return object
+        $Summary = $SummaryLines -join "`n"
+        $EventObject = [pscustomobject]@{
+            Summary = $Summary
+        }
 
         return $EventObject
     }

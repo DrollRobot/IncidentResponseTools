@@ -31,7 +31,7 @@ function Resolve-ExchangeItemGroupDelete {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         $Yellow = @{ ForegroundColor = 'Yellow' }
 
-        $Summary = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
 
         # check for message trace table
 
@@ -74,7 +74,7 @@ function Resolve-ExchangeItemGroupDelete {
         # loop through folders
         foreach ($Folder in $FolderTable.GetEnumerator()) {
 
-            $Summary.Add( "Folder: $($Folder.Name)" )
+            $SummaryLines.Add( "Folder: $($Folder.Name)" )
 
             # loop through items
             foreach ($Item in $Folder.Value) {
@@ -95,21 +95,21 @@ function Resolve-ExchangeItemGroupDelete {
 
                 # add best option to summary
                 if ($Subject) {
-                    $Summary.Add( "    Subject: ${Subject}" )            
+                    $SummaryLines.Add( "    Subject: ${Subject}" )            
                 }
                 elseif ($InternetMessageId) {
-                    $Summary.Add( "    Item: ${InternetMessageId}" )
+                    $SummaryLines.Add( "    Item: ${InternetMessageId}" )
                 }
                 else {
-                    $Summary.Add( "    Item: $($Item.Id)" )
+                    $SummaryLines.Add( "    Item: $($Item.Id)" )
                 }
             }
         }
 
         # join strings, create return object
-        $AllSummary = $Summary -join "`n"
+        $Summary = $SummaryLines -join "`n"
         $EventObject = [pscustomobject]@{
-            Summary = $AllSummary
+            Summary = $Summary
         }
 
         return $EventObject

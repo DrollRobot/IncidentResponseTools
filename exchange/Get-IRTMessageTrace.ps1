@@ -5,20 +5,21 @@ function Get-IRTMessageTrace {
 	Downloads incoming and outgoing message trace for specified user, or all users.
 	
 	.NOTES
-	Version: 1.4.0
+	Version: 1.5.0
+    1.5.0 - Integrated V1 and V2 into same function.
     1.4.0 - Switched to separate get/show functions. Updated to passing objects, not files. Added global variables.
 	#>
     [CmdletBinding( DefaultParameterSetName = 'UserObjects' )]
     param (
-        [Parameter( ParameterSetName = 'UserObjects', Position = 0 )]
+        [Parameter(ParameterSetName = 'UserObjects', Position = 0)]
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
 
-        [Parameter( ParameterSetName = 'UserEmails' )]
+        [Parameter(ParameterSetName = 'UserEmails')]
         [Alias( 'UserEmail' )]
         [string[]] $UserEmails,
 
-        [Parameter( ParameterSetName = 'AllUsers' )]
+        [Parameter(ParameterSetName = 'AllUsers')]
         [switch] $AllUsers,
 
         # relative date range
@@ -30,7 +31,6 @@ function Get-IRTMessageTrace {
         [int] $ResultLimit = 50000,
         [string] $TableStyle = 'Dark8',
         [boolean] $Variable = $true,
-
         [boolean] $Excel = $true,
         [switch] $Test,
         [boolean] $Xml = $true
@@ -46,11 +46,10 @@ function Get-IRTMessageTrace {
         if ($Test) {
             $Script:Test = $true
             # start stopwatch
-            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $DateString = Get-Date -Format $FileNameDateFormat
         $RawDateProperty = 'Received'
+        $FileNamePrefix = 'MessageTrace'
 
         # colors
         $Blue = @{ForegroundColor = 'Blue'}
@@ -122,28 +121,9 @@ function Get-IRTMessageTrace {
                 ErrorAction = 'Stop'
             }
             Write-Error @ErrorParams
-        }
-
-        # verify Get-MessageTraceV2 is available
-        try {
-            [void](Get-Command Get-MessageTraceV2 -ErrorAction 'Stop')
-        }
-        catch {
-            $ErrorParams = @{
-                Category    = 'ResourceUnavailable'
-                Message     = "Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Run Get-IRTMessageTraceV1 instead."
-                ErrorAction = 'Stop'
-            }
-            Write-Error @ErrorParams
-        }
-        
-        # get client domain name for file output
-        $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
-        $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
+        } 
 
         #region DATE RANGE
-
         # validate only days or (start and end)
         if ($Days -and ($Start -or $End)) {
             $ErrorParams = @{
@@ -202,7 +182,7 @@ function Get-IRTMessageTrace {
                 $EndDateUtc = $Temp
             }
             # set days to match range
-            $Days = [Int]([Math]::Floor( ($EndDate - $StartDate).TotalDays ))
+            $Days = [Int]([Math]::Ceiling( ($EndDate - $StartDate).TotalDays ))
         }
         # create objects based on days
         else {
@@ -217,6 +197,57 @@ function Get-IRTMessageTrace {
             $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime()
             $EndDateUtc = (Get-Date).ToUniversalTime()
         }
+
+        #region VERIFY COMMAND
+        # verify Get-MessageTraceV2 is available
+        try {
+            [void](Get-Command Get-MessageTraceV2 -ErrorAction 'Stop')
+        }
+        catch {
+            # if there was an error, revert to V1
+            $WarningParams = @{
+                Category    = 'ResourceUnavailable'
+                Message     = "Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Running Get-MessageTrace instead."
+            }
+            Write-Warning @WarningParams
+
+            $V1 = $true
+
+            # change date ranges to 10 days max
+            if ($DateRangeType = 'Absolute') {
+                $NowUtc = (Get-Date).ToUniversalTime()
+                if ($StartDateUtc -lt $NowUtc.AddDays(-10)) {
+                    $WarningParams = @{
+                        Category    = 'LimitsExceeded'
+                        Message     = "-StartDate is more than 10 days ago. Changing to 10 days ago."
+                    }
+                    Write-Warning @WarningParams
+                    $StartDateUtc = $NowUtc.AddDays(-10)
+                }
+                if ($EndDateUtc -le $StartDateUtc) {
+                    $ErrorParams = @{
+                        Category    = 'LimitsExceeded'
+                        Message     = "-EndDate must be greater than -StartDate."
+                        ErrorAction = 'Stop'
+                    }
+                    Write-Error @ErrorParams 
+                }
+            }
+            else {
+                if ($Days -gt 10) {
+                    $WarningParams = @{
+                        Category    = 'LimitsExceeded'
+                        Message     = "Get-MessageTrace can only search back 10 days. Changing -Days to 10."
+                    }
+                    Write-Warning @WarningParams
+                    $Days = 10
+                }
+            }
+        }
+
+        # get client domain name for file output
+        $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
+        $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
     }
 
     process {
@@ -238,7 +269,9 @@ function Get-IRTMessageTrace {
             else {
                 $UserName = $UserEmail -split '@' | Select-Object -First 1
             }
-            $XmlOutputPath = "MessageTrace_${Days}Days_${UserName}_${DateString}.xml"
+            $FileNameDateFormat = "yy-MM-dd_HH-mm"
+            $FileNameDateString = Get-Date -Format $FileNameDateFormat
+            $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
 
             ### request message trace records
             # if single user
@@ -251,7 +284,13 @@ function Get-IRTMessageTrace {
                     Days = $Days #FIXME convert to start and end dates.
                     ResultLimit = $ResultLimit
                 }
-                $SenderTrace = Request-IRTMessageTrace @Params
+                if ($Script:Test) {$Params['Test'] = $true}
+                $SenderTrace = if ($V1) {
+                    Request-IRTMessageTraceV1 @Params
+                }
+                else {
+                    Request-IRTMessageTrace @Params
+                }
 
                 # get recipient records
                 Write-Host @Blue "Requesting message trace records with recipient: ${UserEmail}"
@@ -260,7 +299,14 @@ function Get-IRTMessageTrace {
                     Days = $Days
                     ResultLimit = $ResultLimit
                 }
-                $RecipientTrace = Request-IRTMessageTrace @Params
+                if ($Script:Test) {$Params['Test'] = $true}
+                $RecipientTrace = if ($V1) {
+                    Request-IRTMessageTraceV1 @Params
+                }
+                else {
+                    Request-IRTMessageTrace @Params
+                }
+
 
                 # if both traces have results
                 if (($SenderTrace | Measure-Object).Count -gt 0 -and 
@@ -273,7 +319,7 @@ function Get-IRTMessageTrace {
                         ListTwo          = $RecipientTrace
                         Descending   = $true
                     }
-                    [System.Collections.Generic.List[psobject]]$MessageTrace = Merge-SortedListsOnDate @MergeParams
+                    [System.Collections.Generic.List[psobject]]$Messages = Merge-SortedListsOnDate @MergeParams
                 }
                 # if no results, exit
                 elseif (($SenderTrace | Measure-Object).Count -eq 0 -and 
@@ -284,7 +330,7 @@ function Get-IRTMessageTrace {
                 }
                 # if only results in one, no need to merge.
                 else {
-                    [System.Collections.Generic.List[psobject]]$MessageTrace = $SenderTrace + $RecipientTrace
+                    [System.Collections.Generic.List[psobject]]$Messages = $SenderTrace + $RecipientTrace
                 }
             }
             # if -allusers
@@ -294,13 +340,19 @@ function Get-IRTMessageTrace {
                     Days = $Days
                     ResultLimit = $ResultLimit
                 }
-                [System.Collections.Generic.List[psobject]]$MessageTrace = Request-IRTMessageTrace @Params
+                [System.Collections.Generic.List[psobject]]$Messages = Request-IRTMessageTrace @Params
+            }
+
+            # exit if no messagtes returned
+            if (($Messages | Measure-Object).Count -eq 0) {
+                Write-Host @Red "0 total messages retrieved. Exiting."
+                return
             }
 
             # add metadata to results
             $StartDate = (Get-Date).AddDays($Days * -1)
             $EndDate = Get-Date
-            $MessageTrace.Insert(0,
+            $Messages.Insert(0,
                 [pscustomobject]@{
                     Metadata = $true
                     UserObject = $ScriptUserObject
@@ -310,6 +362,7 @@ function Get-IRTMessageTrace {
                     EndDate = $EndDate
                     Days = $Days
                     DomainName = $DomainName
+                    FileNamePrefix = $FileNamePrefix
                 }
             )
 
@@ -321,20 +374,9 @@ function Get-IRTMessageTrace {
                     # do nothing
                 }
                 else {
-                    # # export raw message trace
-                    # $VariableName = "IRT_MessageTrace_${UserName}"
-                    # Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
-                    # $VariableParams = @{
-                    #     Name = $VariableName
-                    #     Value = $MessageTrace
-                    #     Scope = 'Global'
-                    #     Force = $True
-                    # }
-                    # New-Variable @VariableParams
-
                     # export table by internetmessageid
                     $Table = @{}
-                    foreach ($Message in $MessageTrace) {
+                    foreach ($Message in $Messages) {
                         if (-not $Message.Metadata) {
                             $InternetMessageId = $Message.MessageId
                             $Table[$InternetMessageId] = $Message
@@ -355,17 +397,17 @@ function Get-IRTMessageTrace {
             # export raw data
             if ($Xml) {
                 Write-Host @Blue "Exporting raw data to: ${XmlOutputPath}"
-                $MessageTrace | Export-CliXml -Depth 10 -Path $XmlOutputPath
+                $Messages | Export-CliXml -Depth 10 -Path $XmlOutputPath
             }
 
             if ($Script) {
-                Write-Output $MessageTrace
+                Write-Output $Messages
                 return
             }
 
             # create excel sheet
             if ($Excel) {
-                Show-IRTMessageTrace -Messages $MessageTrace
+                Show-IRTMessageTrace -Messages $Messages
             }
         }
     }

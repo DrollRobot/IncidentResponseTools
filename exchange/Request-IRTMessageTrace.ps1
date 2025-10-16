@@ -30,9 +30,9 @@ function Request-IRTMessageTrace {
         [string[]] $SenderAddress,
         [string[]] $RecipientAddress,
 
-        #FIXME convert to start and end dates
-        [datetime] $StartDateUtc,
-        [datetime] $EndDateUtc,
+        # #FIXME convert to start and end dates
+        # [datetime] $StartDateUtc,
+        # [datetime] $EndDateUtc,
 
         [Parameter(Mandatory)]
         [ValidateRange(1,90)]
@@ -57,13 +57,13 @@ function Request-IRTMessageTrace {
         $Red = @{ForegroundColor = 'Red'}
         $Yellow = @{ForegroundColor = 'Yellow'}
 
-        # adjust start date if older than 90 days.
-        $90DaysAgo = (Get-Date).AddDays(-90).ToUniversalTime()
-        if ($StartDate -lt $90DaysAgo) {
-            $DateString = $StartDate.ToLocalTime().ToString('MM/dd/yy hh:mmtt')
-            Write-Host @Yellow "${Function}: ${DateString} is more than max range of 90 days. Setting to 90 days."
-            $StartDate = $90DaysAgo
-        }
+        # # adjust start date if older than 90 days.
+        # $90DaysAgo = (Get-Date).AddDays(-90).ToUniversalTime()
+        # if ($StartDateUtc -lt $90DaysAgo) {
+        #     $DateString = $StartDateUtc.ToLocalTime().ToString('MM/dd/yy hh:mmtt')
+        #     Write-Host @Yellow "${Function}: ${DateString} is more than max range of 90 days. Setting to 90 days."
+        #     $StartDateUtc = $90DaysAgo
+        # }
 
         # build non-overlapping 10-day chunks, newest to oldest
         $Chunks = [System.Collections.Generic.List[object]]::new()

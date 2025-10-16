@@ -253,7 +253,7 @@ function Get-IRTInboxRules {
             $SetParams = @{
                 Worksheet = $Worksheet
                 Range     = "${SheetStartColumn}${SheetStartRow}:${EndColumn}${EndRow}"
-                FontName  = 'Roboto'
+                FontName  = 'Consolas'
             }
             Set-ExcelRange @SetParams
 

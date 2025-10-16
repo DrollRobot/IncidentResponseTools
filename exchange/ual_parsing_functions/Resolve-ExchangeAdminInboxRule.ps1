@@ -33,10 +33,10 @@ function Resolve-ExchangeAdminInboxRule {
 
         # join strings, create return object
         $Summary = $SummaryLines -join "`n"
-        $SummaryObject = [pscustomobject]@{
+        $EventObject = [pscustomobject]@{
             Summary = $Summary
         }
 
-        return $SummaryObject
+        return $EventObject
     }
 }

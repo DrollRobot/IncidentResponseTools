@@ -9,29 +9,26 @@ function Resolve-SharePointPageViewed {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
 
         # variables
-        $SummaryStrings = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
     }
 
     process {
 
         # ObjectId
-        $ObjectId = $AuditData.ObjectId
-        $SummaryStrings.Add( "ObjectId: ${ObjectId}" )
+        $ObjectId = $Log.AuditData.ObjectId
+        $SummaryLines.Add( "ObjectId: ${ObjectId}" )
 
 
         # join strings, create return object
-        $SummaryString = $SummaryStrings -join ', '
+        $Summary = $SummaryLines -join ', '
         $EventObject = [pscustomobject]@{
-            Summary = $SummaryString
+            Summary = $Summary
         }
 
         return $EventObject

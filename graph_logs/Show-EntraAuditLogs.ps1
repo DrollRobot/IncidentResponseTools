@@ -523,7 +523,7 @@ function Show-EntraAuditLogs {
         $SetParams = @{
             Worksheet = $Worksheet
             Range     = "${SheetStartColumn}${SheetStartRow}:${EndColumn}${EndRow}"
-            FontName  = 'Roboto'
+            FontName  = 'Consolas'
         }
         try {
             Set-ExcelRange @SetParams

@@ -17,7 +17,7 @@ function Start-IncidentResponsePlaybook {
         [psobject[]] $UserObjects,
         [string] $Ticket,
         [switch] $NoFolder,
-        [int] $Threads = 10,
+        [int] $Threads = 15,
         [switch] $Test
     )
 
@@ -28,6 +28,12 @@ function Start-IncidentResponsePlaybook {
         if ( $CallStack.Count -eq 2 ) {
             $ModuleVersion = $ExecutionContext.SessionState.Module.Version
             Write-Host "Module version: ${ModuleVersion}"
+        }
+
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
 
         # if users passed via script argument:
@@ -55,22 +61,28 @@ function Start-IncidentResponsePlaybook {
             }
         }
 
-        # confirm connected to exchange, graph
-        $ThrowConnectString = @()
+        # verify connected to graph
         if (-not (Get-MgContext)) {
-            $ThrowConnectString += 'Graph'
-            $Throw = $true
-        }
-        if (-not (Get-ConnectionInformation)) {
-            $ThrowConnectString += 'Exchange'
-            $Throw = $true
-        }
-        if ( $Throw ) {
-            $ThrowConnectString = $ThrowConnectString -join ', '
-            throw "Not connected to ${ThrowConnectString}. Exiting."
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Graph. Run Connect-MgGraph."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
 
-        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        # verify connected to exchange
+        try {
+            [void](Get-AcceptedDomain)
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        } 
     }
 
     process {
@@ -197,14 +209,14 @@ function Start-IncidentResponsePlaybook {
                     $ScriptUserObjects
                 )
             }
-            # Get-UserSignInLogs
+            # Get-SignInLogs
             @{  Script = { 
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Get-UserSignInLogs -UserObjects $RunspaceUserObjects
+                    Get-SignInLogs -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
                     $WorkingPath,
@@ -271,42 +283,17 @@ function Start-IncidentResponsePlaybook {
             # download email rules
             Get-IRTInboxRules -UserObjects $ScriptUserObjects
 
-            # download 10 day message trace
-            $MTParams = @{
-                UserObjects = $ScriptUserObjects
-            }
-            try {
-                Get-IRTMessageTrace -Days 90 @MTParams # uses Get-MessageTraceV2
-            }
-            catch {
-                $_
-                Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-                Get-IRTMessageTraceV1 -Days 10 @MTParams  # uses Get-MessageTrace (limited to 10 days)
-            }
+            # download maximum available user message trace
+            Get-IRTMessageTrace -Days 90 -UserObjects $ScriptUserObjects
 
-            # download specific UAL over longer period
-            # FIXME
+            # download high risk UAL
+            Get-UALogs -AllUsers -RiskyOperations -Days 180
 
-            # download all UAL
-            $UAParams = @{
-                UserObjects = $ScriptUserObjects
-                WaitOnMessageTrace = $true
-            }
-            Get-UserUALogs @UAParams
+            # download user UAL
+            Get-UALogs -Days 1 -WaitOnMessageTrace:$true -UserObjects $ScriptUserObjects
 
             # # download 2 day message trace for all users
-            # $MTParams = @{
-            #     AllUsers = $true
-            #     Days = 2
-            # }
-            # try {
-            #     Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
-            # }
-            # catch {
-            #     $_
-            #     Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-            #     Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
-            # }
+            Get-IRTMessageTrace -AllUsers -Days 2
 
             ### wait for completion, collect errors
             while ($Global:Playbook_JobList.Completed -contains $false) {
@@ -334,8 +321,8 @@ function Start-IncidentResponsePlaybook {
                 }
 
                 Start-Sleep -Seconds 1
-                if ( $Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
-                    Write-Host @Magenta "Waiting on "
+                if ( $Script:Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
+                    Write-Host @Yellow "Waiting on "
                 }
             }
         }

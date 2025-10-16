@@ -29,13 +29,14 @@ function Show-SignInLogs {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        $RawDateProperty = 'CreatedDateTime'
-        $DateColumnHeader = 'DateTime'
-        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new()
-        if ($Script:Test) {
+        if ($Test) {
+            $Script:Test = $true
+
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
+        $RawDateProperty = 'CreatedDateTime'
+        $DateColumnHeader = 'DateTime'
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -43,8 +44,6 @@ function Show-SignInLogs {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         # $Red = @{ ForegroundColor = 'Red' }
         $Yellow = @{ ForegroundColor = 'Yellow' }
-
-        if ($Test) {$Script:Test = $true}
 
         # import from xml
         if ($ParameterSet -eq 'Xml') {
@@ -74,7 +73,7 @@ function Show-SignInLogs {
             }
         }
 
-        # import metadata
+        #region Metadata
         if ($Logs[0].Metadata) {
 
             # remove metadata from beginning of list
@@ -116,7 +115,6 @@ function Show-SignInLogs {
 
         # ipinfo
         if ($IpInfo) {
-
             $IpInfoAddresses = [System.Collections.Generic.HashSet[string]]::new()
 
             # check for presence of ip_info package
@@ -174,7 +172,7 @@ function Show-SignInLogs {
                 Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
             }
 
-            if (($Global:IRT_IpInfo | Measure-Object).Count -eq 0) {
+            if (($Global:IRT_IpInfo.Keys | Measure-Object).Count -eq 0) {
                 $Global:IRT_IpInfo = @{}
             }
             foreach ($Ip in $IpInfoAddresses) {
@@ -207,7 +205,6 @@ function Show-SignInLogs {
             Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
         }
     
-        # proccess each log
         $RowCount = ($Logs | Measure-Object).Count
         $Rows = [System.Collections.Generic.List[PSCustomObject]]::new($RowCount)
         for ($i = 0; $i -lt $RowCount; $i++) {  
@@ -250,7 +247,7 @@ function Show-SignInLogs {
             }
 
             # add to list
-            $Rows.Add([PSCustomObject]@{
+            [void]$Rows.Add([PSCustomObject]@{
                 Raw = $Raw
                 $DateColumnHeader = Format-EventDateString $Log.$RawDateProperty
                 UserPrincipalName = $Log.UserPrincipalName
@@ -268,7 +265,7 @@ function Show-SignInLogs {
                 Token = $Log.UniqueTokenIdentifier
             })
 
-            if ($Script:Test -and ($i % 1000 -eq 0)) {
+            if ($Script:Test -and ($i % 100 -eq 0)) {
                 $Percent = [int]( ($i / $RowCount ) * 100 )
                 $ProgressParams = @{
                     Id              = 1
@@ -287,7 +284,7 @@ function Show-SignInLogs {
             Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
         }
 
-        # export spreadsheet
+        #region EXPORT SPREADSHEET
         if ($Script:Test) {
             $TestText = "Exporting to excel"
             $TimerStart = $Stopwatch.Elapsed
@@ -505,7 +502,7 @@ function Show-SignInLogs {
         $SetParams = @{
             Worksheet = $Worksheet
             Range     = "${SheetStartColumn}${SheetStartRow}:${EndColumn}${EndRow}"
-            FontName  = 'Roboto'
+            FontName  = 'Consolas'
         }
         try {
             Set-ExcelRange @SetParams

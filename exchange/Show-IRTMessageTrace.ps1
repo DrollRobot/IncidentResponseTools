@@ -32,7 +32,6 @@ function Show-IRTMessageTrace {
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
-        $WorksheetName = 'MessageTrace'
         $TitleDateFormat = "M/d/yy h:mmtt"
         $RawDateProperty = 'Received'
         $DateColumnHeader = 'DateTime'
@@ -83,6 +82,7 @@ function Show-IRTMessageTrace {
             $EndDate = $Metadata.EndDate
             $Days = $Metadata.Days
             $DomainName = $Metadata.DomainName
+            $FileNamePrefix = $Metadata.FileNamePrefix
         }
         else {
             Write-Error "${Function}: No Metadata found."
@@ -91,7 +91,7 @@ function Show-IRTMessageTrace {
         # build file name
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
-        $ExcelOutputPath = "MessageTrace_${Days}Days_${UserName}_${FileDateString}.xlsx"
+        $ExcelOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileDateString}.xlsx"
 
         # build worksheet title
         $StartString = $StartDate.ToString($TitleDateFormat).ToLower()
@@ -164,7 +164,7 @@ function Show-IRTMessageTrace {
 
         $ExcelParams = @{
             Path          = $ExcelOutputPath
-            WorkSheetname = $WorksheetName
+            WorkSheetname = $FileNamePrefix
             Title         = $WorksheetTitle
             TableStyle    = $TableStyle
             # AutoSize      = $true # apparently very slow?
@@ -211,7 +211,7 @@ function Show-IRTMessageTrace {
                 Address          = "${SenderColumn}${TableStartRow}:${SenderColumn}${EndRow}"
                 RuleType         = 'NotEqual'
                 ConditionValue   = $UserEmail
-                Style          = @{Bold = $true}
+                Bold = $true
             }
             Add-ConditionalFormatting @CfParamsSender
 
@@ -220,7 +220,7 @@ function Show-IRTMessageTrace {
                 Address          = "${RecipientColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
                 RuleType         = 'NotEqual'
                 ConditionValue   = $UserEmail
-                Style          = @{Bold = $true}
+                Bold = $true
             }
             Add-ConditionalFormatting @CfParamsRecipient
         }
@@ -235,77 +235,6 @@ function Show-IRTMessageTrace {
             BackgroundColor  = 'LightYellow'
         }
         Add-ConditionalFormatting @CfParams
-
-
-        # # highlight where sender and recipient are the same
-        # if ($Script:Test) {
-        #     $TestText = "Highlight message with same to/from"
-        #     $TimerStart = $Stopwatch.Elapsed
-        #     Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
-        # }
-
-        # $SenderColumn = ( $Worksheet.Tables[0].Columns | 
-        #     Where-Object { $_.Name -eq 'SenderAddress' } ).Id | 
-        #     Convert-DecimalToExcelColumn
-        # $RecipientColumn = ( $Worksheet.Tables[0].Columns | 
-        #     Where-Object { $_.Name -eq 'RecipientAddress' } ).Id | 
-        #     Convert-DecimalToExcelColumn
-
-        # $RowCount = $EndRow - $TableStartRow
-
-        # for ($i = $TableStartRow; $i -le $EndRow; $i++) {
-
-        #     $SenderAddress = $Worksheet.Cells[$SenderColumn + $i].Text
-        #     $RecipientAddress = $Worksheet.Cells[$RecipientColumn + $i].Text
-
-        #     # highlight where sender and recipient are the same
-        #     if ($SenderAddress -eq $RecipientAddress) {
-        #         $ColorParams = @{
-        #             Worksheet = $Worksheet
-        #             Range = $SenderColumn + $i + ":" + $RecipientColumn + $i
-        #             BackgroundColor = 'LightYellow'
-        #         }
-        #         Set-ExcelRange @ColorParams
-        #     }
-
-        #     # bold user email, if not -AllUsers
-        #     if ( $ScriptUserObject.UserPrincipalName ) {
-        #         if ( $SenderAddress -ne $ScriptUserObject.UserPrincipalName ) {
-        #             $BoldParams = @{
-        #                 Worksheet = $Worksheet
-        #                 Range = $SenderColumn + $i
-        #                 Bold = $true
-        #             }
-        #             Set-ExcelRange @BoldParams
-        #         }
-        #         if ( $RecipientAddress -ne $ScriptUserObject.UserPrincipalName ) {
-        #             $BoldParams = @{
-        #                 Worksheet = $Worksheet
-        #                 Range = $RecipientColumn + $i
-        #                 Bold = $true
-        #             }
-        #             Set-ExcelRange @BoldParams
-        #         }
-        #     }
-
-        # if ($Script:Test -and ($i % 1000 -eq 0)) {
-        #         $Percent = [int]( ($i / $RowCount ) * 100 )
-        #         $ProgressParams = @{
-        #             Id              = 1
-        #             Activity        = 'Same to/from loop'
-        #             Status          = "Completed ${i} of ${RowCount}"
-        #             PercentComplete = $Percent
-        #         }
-        #         Write-Progress @ProgressParams
-        #     }
-        # }
-
-        # if ($Script:Test) {
-        #     Write-Progress -Id 1 -Activity 'Row loop' -Completed
-
-        #     $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
-        #     Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
-        # }
 
         #region COLUMN WIDTH
 
@@ -345,7 +274,7 @@ function Show-IRTMessageTrace {
         $SetParams = @{
             Worksheet = $Worksheet
             Range     = "${SheetStartColumn}${SheetStartRow}:${EndColumn}${EndRow}"
-            FontName  = 'Roboto'
+            FontName  = 'Consolas'
         }
         Set-ExcelRange @SetParams
 

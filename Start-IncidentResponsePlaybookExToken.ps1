@@ -18,7 +18,7 @@ function Start-IncidentResponsePlaybookExToken {
         
         [string] $Ticket,
         [switch] $NoFolder,
-        [int] $MaxRunspaces = 20,
+        [int] $MaxRunspaces = 15,
         [switch] $Test
     )
 
@@ -31,6 +31,12 @@ function Start-IncidentResponsePlaybookExToken {
         if ( $CallStack.Count -eq 2 ) {
             $ModuleVersion = $ExecutionContext.SessionState.Module.Version
             Write-Host "Module version: ${ModuleVersion}"
+        }
+
+        if ($Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
 
         # if users passed via script argument:
@@ -58,27 +64,28 @@ function Start-IncidentResponsePlaybookExToken {
             }
         }
 
-        # confirm connected to exchange, graph
-        $ThrowConnectString = @()
+        # verify connected to graph
         if (-not (Get-MgContext)) {
-            $ThrowConnectString += 'Graph'
-            $Throw = $true
-        }
-        if (-not (Get-ConnectionInformation)) {
-            $ThrowConnectString += 'Exchange'
-            $Throw = $true
-        }
-        if ( $Throw ) {
-            $ThrowConnectString = $ThrowConnectString -join ', '
-            throw "Not connected to ${ThrowConnectString}. Exiting."
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Graph. Run Connect-MgGraph."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
 
-        # variables
-        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-        # variables to support closing runspaces on ctrl+c
-        $Global:Playbook_JobList = @()
-        $Global:Playbook_RunspacePool = $null
+        # verify connected to exchange
+        try {
+            [void](Get-AcceptedDomain)
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        } 
     }
 
     process {
@@ -221,17 +228,7 @@ function Start-IncidentResponsePlaybookExToken {
                         ShowBanner = $false
                     }
                     Connect-ExchangeOnline @ConnectParams
-                    $MTParams = @{
-                        UserObjects = $RunspaceUserObjects
-                    }
-                    try {
-                        Get-IRTMessageTrace -Days 90 @MTParams # uses Get-MessageTraceV2
-                    }
-                    catch {
-                        $_
-                        Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-                        Get-IRTMessageTraceV1 -Days 10 @MTParams  # uses Get-MessageTrace
-                    }
+                    Get-IRTMessageTrace -Days 90 -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
                     $WorkingPath,
@@ -277,21 +274,21 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # Get-UserSignInLogs
+            # Get-SignInLogs
             @{  Script = { 
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Get-UserSignInLogs -UserObjects $RunspaceUserObjects
+                    Get-SignInLogs -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
                     $WorkingPath,
                     $ScriptUserObjects
                 )
             }
-            # Get-UserUALogs
+            # Get-UALogs
             @{  Script = {
                     param( 
                         $WorkingPath,
@@ -309,7 +306,34 @@ function Start-IncidentResponsePlaybookExToken {
                         UserObjects = $RunspaceUserObjects
                         WaitOnMessageTrace = $true
                     }
-                    Get-UserUALogs @UAParams
+                    Get-UALogs @UAParams
+                }
+                Args  = @(
+                    $WorkingPath,
+                    $Global:Exchange,
+                    $ScriptUserObjects
+                )
+            }
+            # Get-UALogs -RiskyOperations
+            @{  Script = {
+                    param( 
+                        $WorkingPath,
+                        $Exchange,
+                        $RunspaceUserObjects
+                    )
+                    Set-Location -Path $WorkingPath
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
+                    $UAParams = @{
+                        AllUsers = $true
+                        RiskyOperations = $true
+                        Days = 180
+                    }
+                    Get-UALogs @UAParams
                 }
                 Args  = @(
                     $WorkingPath,
@@ -331,43 +355,34 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # # Get-IRTMessageTrace -AllUsers
-            # @{  Script = {
-            #         param( 
-            #             $WorkingPath,
-            #             $Exchange
-            #         )
-            #         # set path
-            #         Set-Location -Path $WorkingPath
-            #         # connect to exchange
-            #         $ConnectParams = @{
-            #             AccessToken = $Exchange.Token
-            #             UserPrincipalName = $Exchange.UserPrincipalName
-            #             ShowBanner = $false
-            #         }
-            #         Connect-ExchangeOnline @ConnectParams
-            #         # action
-            #         $MTParams = @{
-            #             AllUsers = $true
-            #             Days = 2
-            #         }
-            #         try {
-            #             Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
-            #         }
-            #         catch {
-            #             $_
-            #             Write-Error "${Function}: Error during Get-IRTMessageTrace. Falling back to Get-IRTMessageTraceV1."
-            #             Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
-            #         }
-            #     } 
-            #     Args  = @(
-            #         $WorkingPath,
-            #         $Global:Exchange
-            #     )
-            # }
+            # Get-IRTMessageTrace -AllUsers
+            @{  Script = {
+                    param( 
+                        $WorkingPath,
+                        $Exchange
+                    )
+                    # set path
+                    Set-Location -Path $WorkingPath
+                    # connect to exchange
+                    $ConnectParams = @{
+                        AccessToken = $Exchange.Token
+                        UserPrincipalName = $Exchange.UserPrincipalName
+                        ShowBanner = $false
+                    }
+                    Connect-ExchangeOnline @ConnectParams
+                    Get-IRTMessageTrace -AllUsers -Days 2
+                } 
+                Args  = @(
+                    $WorkingPath,
+                    $Global:Exchange
+                )
+            }
         )
 
         try {
+
+            $Global:Playbook_JobList = @()
+            $Global:Playbook_RunspacePool = $null
 
             ### build a runspace pool
             $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()

@@ -21,15 +21,15 @@ function Resolve-ExchangeAdminSetConditionalAccessPolicy {
     process {
 
         # DisplayName
-        $DisplayName = ( $Log.AuditData.Parameters | Where-Object { $_.Name -eq 'DisplayName' } ).Value
-        $SummaryLines.Add( $DisplayName )
+        $DisplayName = ($Log.AuditData.Parameters | Where-Object { $_.Name -eq 'DisplayName' } ).Value
+        $SummaryLines.Add("DisplayName: ${DisplayName}")
 
         # join strings, create return object
         $Summary = $SummaryLines -join "`n"
-        $SummaryObject = [pscustomobject]@{
+        $EventObject = [pscustomobject]@{
             Summary = $Summary
         }
 
-        return $SummaryObject
+        return $EventObject
     }
 }

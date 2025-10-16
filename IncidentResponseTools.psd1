@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.4.4'
+    ModuleVersion     = '2.5.0'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -72,8 +72,6 @@
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules     = @(
-        'exchange\Get-IRTMessageTraceV1.ps1'
-        'exchange\Request-IRTMessageTraceV1.ps1'
         'exchange\Get-ExchangeUAAppLogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
@@ -81,13 +79,14 @@
         'exchange\Grant-MailboxFullAccess.ps1'
         'exchange\Remove-MailboxFullAccess.ps1'
         'exchange\Request-IRTMessageTrace.ps1'
+        'exchange\Request-IRTMessageTraceV1.ps1'
         'exchange\Merge-SortedArraysOnDate.ps1'
         'exchange\Open-MailboxInOWA.ps1'
         'exchange\Show-IRTMessageTrace.ps1'
         'exchange\Show-Mailbox.ps1'
         'exchange\Show-MailboxAccess.ps1'
         'exchange\Show-UALogs.ps1'
-        'exchange\Get-UserUALogs.ps1'
+        'exchange\Get-UALogs.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryUpdateUser.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminInboxRule.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminSetConditionalAccessPolicy.ps1'
@@ -108,9 +107,8 @@
 
         'graph_logs\ConvertTo-HumanErrorDescription.ps1'
         'graph_logs\Add-HumanReadableId.ps1'
-        'graph_logs\Get-AllSignInLogs.ps1'
         'graph_logs\Get-EntraAuditLogs.ps1'
-        'graph_logs\Get-UserSignInLogs.ps1'
+        'graph_logs\Get-SignInLogs.ps1'
         'graph_logs\Get-NonInteractiveLogs.ps1'
         'graph_logs\Group-ByCorrelationId.ps1'
         'graph_logs\Import-LogFile.ps1'
@@ -162,9 +160,8 @@
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
-        'Get-IRTMessageTraceV1'
         'Get-IRTInboxRules'
-        'Get-UserUALogs'
+        'Get-UALogs'
         'Grant-MailboxFullAccess'
         'Remove-MailboxFullAccess'
         'Open-MailboxInOWA'
@@ -190,13 +187,11 @@
         'Get-UserApplications'
 
         ### graph_logs
-        'Get-AllSignInLogs'
         'Get-EntraAuditLogs'
-        'Get-UserSignInLogs'
+        'Get-SignInLogs'
         'Group-ByCorrelationId'
         'Import-LogFile'
         'Show-EntraAuditLogs'
-        'Show-SignInLog'
         'Show-SignInLogs'
 
         ### graph_roles
@@ -249,8 +244,6 @@
         'GetUserUALogs'
         # Get-IRTMessageTrace
         'MessageTrace'
-        # Get-IRTMessageTraceV1
-        'MessageTraceV1'
         # Get-IRTInboxRules
         'InboxRule'
         'InboxRules'
@@ -295,7 +288,7 @@
         'GetNILogs'
         'Get-NonInteractiveLog'
 
-        # Get-UserSigninLogs
+        # Get-SignInLogs
         'SILog'
         'SILogs'
         'GetSILog'
