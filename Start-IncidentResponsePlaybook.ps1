@@ -30,7 +30,7 @@ function Start-IncidentResponsePlaybook {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -286,11 +286,11 @@ function Start-IncidentResponsePlaybook {
             # download maximum available user message trace
             Get-IRTMessageTrace -Days 90 -UserObjects $ScriptUserObjects
 
-            # download high risk UAL
-            Get-UALogs -AllUsers -RiskyOperations -Days 180
-
             # download user UAL
             Get-UALogs -Days 1 -WaitOnMessageTrace:$true -UserObjects $ScriptUserObjects
+
+            # # download high risk UAL
+            # Get-UALogs -AllUsers -RiskyOperations -Days 180
 
             # # download 2 day message trace for all users
             Get-IRTMessageTrace -AllUsers -Days 2
@@ -320,7 +320,7 @@ function Start-IncidentResponsePlaybook {
                     }
                 }
 
-                Start-Sleep -Seconds 1
+                Start-Sleep -Seconds 10
                 if ( $Script:Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
                     Write-Host @Yellow "Waiting on "
                 }

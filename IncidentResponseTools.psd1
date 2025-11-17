@@ -80,13 +80,14 @@
         'exchange\Remove-MailboxFullAccess.ps1'
         'exchange\Request-IRTMessageTrace.ps1'
         'exchange\Request-IRTMessageTraceV1.ps1'
-        'exchange\Merge-SortedArraysOnDate.ps1'
+        'exchange\Merge-ListsOnDate.ps1'
         'exchange\Open-MailboxInOWA.ps1'
         'exchange\Show-IRTMessageTrace.ps1'
         'exchange\Show-Mailbox.ps1'
         'exchange\Show-MailboxAccess.ps1'
         'exchange\Show-UALogs.ps1'
         'exchange\Get-UALogs.ps1'
+        'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryAddRemoveRole.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryUpdateUser.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminInboxRule.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminSetConditionalAccessPolicy.ps1'
@@ -97,6 +98,7 @@
         'exchange\ual_parsing_functions\Resolve-ExchangeItemUpdate.ps1'
         'exchange\ual_parsing_functions\Resolve-SharePointFileOperation.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointPageViewed.ps1'
+        'exchange\ual_parsing_functions\Resolve-SharePointPIMRoleAssigned.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointSearchQueryPerformed.ps1'
 
         'graph_applications\Compare-ServicePrincipals.ps1'
@@ -276,7 +278,7 @@
         ### graph_logs
         # Get-EntraAuditLogs
         'EALog'
-        'EAlog'
+        'EALogs'
         'GetEALog'
         'GetEALogs'
         'Get-EntraAuditLog'

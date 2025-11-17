@@ -21,7 +21,7 @@ function Request-IRTMessageTraceV1 {
         # constants
         # $Function = $MyInvocation.MyCommand.Name
         # $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             # $Stoconnwatch = [System.Diagnostics.Stopwatch]::StartNew()

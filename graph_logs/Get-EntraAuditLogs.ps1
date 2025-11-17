@@ -18,7 +18,7 @@ function Get-EntraAuditLogs {
         [psobject[]] $UserObjects,
 
         [int] $Days = 30,
-        [switch] $All,
+        [switch] $AllUsers,
         [switch] $Beta,
         [switch] $Script,
         [boolean] $Open = $true,
@@ -32,7 +32,7 @@ function Get-EntraAuditLogs {
         # constants
         # $Function = $MyInvocation.MyCommand.Name
         # $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -48,8 +48,8 @@ function Get-EntraAuditLogs {
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
 
-        # if -All wasn't user, find user objects
-        if ( -not $All ) {
+        # if -AllUsers wasn't user, find user objects
+        if ( -not $AllUsers ) {
 
             # if user objects not passed directly, find global
             if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
@@ -66,7 +66,7 @@ function Get-EntraAuditLogs {
                 $ScriptUserObjects = $UserObjects
             }
         }
-        # if -All was used, create fake user object user loop will happen
+        # if -AllUsers was used, create fake user object user loop will happen
         else {
 
             $ScriptUserObjects = @(
@@ -94,7 +94,7 @@ function Get-EntraAuditLogs {
             $XmlOutputPath = "EntraAuditLogs_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
 
             # build filter string
-            if ( -not $All ) {
+            if ( -not $AllUsers ) {
                 $FilterStrings.Add( "targetResources/any(t:t/Id eq '${UserId}')" )
             }
             if ($Days -ne 30) {

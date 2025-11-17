@@ -1,4 +1,8 @@
 Risk,Workload,RecordType,Operation,FriendlyName,CustomDescription,Description
+High,SharePoint,SharePoint,PIMRoleAssigned,,,
+Low,Exchange,ExchangeAdmin,Set-SyncUser,,,
+Low,Exchange,ExchangeAdmin,Set-ConditionalAccessPolicy,,,
+Low,MicrosoftTeams,MicrosoftTeams,MessagesExported,,,
 Low,Exchange,ExchangeItemAggregated,AttachmentAccess,,,
 Low,SharePoint,SharePoint,SignInEvent,,,
 High,AzureActiveDirectory,AzureActiveDirectory,Update PasswordProfile.,,,
@@ -11,7 +15,7 @@ Medium,AzureActiveDirectory,AzureActiveDirectory,Disable account.,,,
 Medium,AzureActiveDirectory,AzureActiveDirectory,Enable account.,,,
 Medium,SecurityComplianceCenter,SecurityComplianceAlerts,AlertEntityGenerated,,,
 High,Exchange,ExchangeAdmin,New-InboundConnector,,,Created a new Email connector. Can be used to send email from an account even after credentials have been reset. Seen used to send spam.
-High,Exchange,ExchangeAdmin,Set-InboundConnector,,,Modified existing email connector. (#FIXME I'm assuming there's a Set operation. Only personally seen "New")
+High,Exchange,ExchangeAdmin,Set-InboundConnector,,,"Modified existing email connector. (#FIXME I'm assuming there's a Set operation. Only personally seen ""New"")"
 High,AzureActiveDirectory,AzureActiveDirectory,Add application.,,,
 High,Exchange,ExchangeAdmin,New-App,,,
 High,AzureActiveDirectory,AzureActiveDirectory,Add app role assignment grant to user.,,,
@@ -164,18 +168,17 @@ High,Exchange,ExchangeAdmin,New-InboxRule,Created new inbox rule in Outlook web 
 Low,Exchange,ExchangeItemGroup,MoveToDeletedItems,Moved messages to Deleted Items folder,,A message was deleted and moved to the Deleted Items folder.
 ,,,UpdateFolderPermissions,Modified folder permission,,A folder permission was changed. Folder permissions control which users in your organization can access mailbox folders and the messages in the folder.
 High,Exchange,ExchangeAdmin,Set-InboxRule,Modified inbox rule from Outlook web app,,A mailbox owner or other user with access to the mailbox modified an inbox rule using the Outlook web app.
-,,,HardDelete,Purged messages from the mailbox,,A message was purged from the Recoverable Items folder (permanently deleted from the mailbox).
+Low,Exchange,ExchangeItemGroup,HardDelete,Purged messages from the mailbox,,A message was purged from the Recoverable Items folder (permanently deleted from the mailbox).
 ,,,Remove-MailboxPermission,Removed delegate mailbox permissions,,"An administrator removed the FullAccess permission (that was assigned to a delegate) from a person's mailbox. After the FullAccess permission is removed, the delegate can't open the other person's mailbox or access any content in it."
 ,,,RemoveFolderPermissions,Removed permissions from folder,,A folder permission was removed. Folder permissions control which users in your organization can access folders in a mailbox and the messages located in those folders.
 Low,Exchange,ExchangeItem,Send,Sent message,,"A message was sent, replied to or forwarded."
 ,,,SendAs,Sent message using Send As permissions,,A message was sent using the SendAs permission. This means that another user sent the message as though it came from the mailbox owner.
-,,,SendOnBehalf,Sent message using Send On Behalf permissions,,A message was sent using the SendOnBehalf permission. This means that another user sent the message on behalf of the mailbox owner. The message indicates to the recipient whom the message was sent on behalf of and who actually sent the message.
+Low,Exchange,ExchangeItem,SendOnBehalf,Sent message using Send On Behalf permissions,,A message was sent using the SendOnBehalf permission. This means that another user sent the message on behalf of the mailbox owner. The message indicates to the recipient whom the message was sent on behalf of and who actually sent the message.
 High,Exchange,ExchangeAdmin,UpdateInboxRules,Updated inbox rules from Outlook client,,"A mailbox owner or other user with access to the mailbox created, modified, or removed an inbox rule by using the Outlook client."
-,,,Update,Updated message,,A message or its properties was changed.
+Low,Exchange,ExchangeItem,Update,Updated message,,A message or its properties was changed.
 ,,,MailboxLogin,User signed in to mailbox,,The user signed in to their mailbox.
 Low,OneDrive,SharePointFileOperation,FileAccessed,Accessed file,,"User or system account accesses a file. Once a user accesses a file, the FileAccessed event isn't logged again for the same user for same file for the next five minutes."
 Low,SharePoint,SharePointFileOperation,FileAccessed,Accessed file,,"User or system account accesses a file. Once a user accesses a file, the FileAccessed event isn't logged again for the same user for same file for the next five minutes."
-eAccessedExtended,,,"This is related to the ""Accessed file"" (FileAccessed) activity. A FileAccessedExtended event is logged when the same person continually accesses a file for an extended period (up to 3 hours)."
 ,,,ComplianceSettingChanged,Changed retention label for a file,,A retention label was applied to or removed from a document. This event is triggered when a retention label is manually or automatically applied to a message.
 ,,,LockRecord,Changed record status to locked,,The record status of a retention label that classifies a document as a record was locked. This means the document can't be modified or deleted. Only users assigned at least the contributor permission for a site can change the record status of a document.
 ,,,UnlockRecord,Changed record status to unlocked,,The record status of a retention label that classifies a document as a record was unlocked. This means that the document can be modified or deleted. Only users assigned at least the contributor permission for a site can change the record status of a document.
@@ -603,8 +606,8 @@ Low,OneDrive,SharePointFileOperation,FileRecycled,Recycled a file,,User moves a 
 ,,,SetRetentionComplianceRule,Updated settings for a retention policy,,"Administrator changed the retention settings for an existing retention policy. Retention settings include how long items are retained, and what happens to items when the retention period expires (such as deleting items, retaining items, or retaining and then deleting them). This activity also corresponds to running the Set-RetentionComplianceRule cmdlet."
 ,,,SetComplianceTag,Updated retention label,,Administrator updated an existing retention label.
 ,,,SetRetentionCompliancePolicy,Updated retention policy,,Administrator updated an existing a retention policy. Updates that trigger this event include adding or excluding content locations that the retention policy is applied to.
-,,,Add member to role.,Add member to Role,,Added a user to an admin role in Microsoft 365.
-,,,Remove member from role.,Removed a user from a directory role,,Removed a user to from an admin role in Microsoft 365.
+High,AzureActiveDirectory,AzureActiveDirectory,Add member to role.,Add member to Role,,Added a user to an admin role in Microsoft 365.
+Medium,AzureActiveDirectory,AzureActiveDirectory,Remove member from role.,Removed a user from a directory role,,Removed a user to from an admin role in Microsoft 365.
 ,,,Set company contact information.,Set company contact information,,"Updated the company-level contact preferences for your organization. This includes email addresses for subscription-related email sent by Microsoft 365, and technical notifications about services."
 ,,,CreateRulePackage / EditRulePackage*,Created new sensitive information type,,A new sensitive information type was created. This includes any SITs created by copying an out of the box SIT.
 ,,,EditRulePackage,Edited a sensitive information type,,An existing sensitive information type was edited. This can include operations like adding/removing a pattern and editing the regex/keyword associated with the sensitive information type.
@@ -725,7 +728,7 @@ Low,OneDrive,SharePointFileOperation,FileSyncUploadedFull,Uploaded files to docu
 ,,,DownloadCopyOfLakeData,Download Copy Of Lake Data,,When the copy of Lake Data is downloaded.
 ,,,Add user.,Added user,,A user account was created.
 ,,,Change user license.,Changed user license,,"The license assigned to a user what changed. To see what licenses were changes, see the corresponding Updated user activity."
-,,,Change user password.,Changed user password,,"A user changes their password. Self-service password reset has to be enabled (for all or selected users) in your organization to allow users to reset their password. You can also track self-service password reset activity in Microsoft Entra ID. For more information, see Reporting options for Microsoft Entra password management."
+Medium,AzureActiveDirectory,AzureActiveDirectory,Change user password.,Changed user password,,"A user changes their password. Self-service password reset has to be enabled (for all or selected users) in your organization to allow users to reset their password. You can also track self-service password reset activity in Microsoft Entra ID. For more information, see Reporting options for Microsoft Entra password management."
 ,,,Delete user.,Deleted user,,A user account was deleted.
 ,,,Reset user password.,Reset user password,,Administrator resets the password for a user.
 ,,,Set force change user password.,Set property that forces user to change password,,Administrator set the property that forces a user to change their password the next time the user signs in to Microsoft 365.

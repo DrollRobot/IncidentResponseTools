@@ -31,6 +31,7 @@ function Get-UALogs {
 
         [string[]] $Operations,
         [switch] $RiskyOperations,
+        [string[]] $FreeText,
 
         [boolean] $Excel = $true,
         [switch] $Test,
@@ -45,7 +46,7 @@ function Get-UALogs {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
 
             # start stopwatch
@@ -288,12 +289,39 @@ function Get-UALogs {
                             Text   = "Running -Freetext query for ${UserIdNoDashes}"
                         }
                     }
+                    if ($FreeText) {
+                        $Key = 5
+                        foreach ($FreeTextString in $FreeText) {
+                            $QueryTable["$Key"] = @{
+                                Params = @{
+                                    FreeText = $FreeTextString 
+                                }
+                                Text = "Running -FreeText '${FreeTextString}' query."
+                            }
+                            $Key++
+                        }
+                    }
                 }
                 'AllUsers' {
-                    $QueryTable = [ordered]@{
-                        '1' = @{
-                            Params = @{}
-                            Text   = "Running query for all users."
+                    if ($FreeText) {
+                        $QueryTable = [ordered]@{}
+                        $Key = 1
+                        foreach ($FreeTextString in $FreeText) {
+                            $QueryTable["$Key"] = @{
+                                Params = @{
+                                    FreeText = $FreeTextString 
+                                }
+                                Text = "Running FreeText '${FreeTextString}' query for all users."
+                            }
+                            $Key++
+                        }
+                    }
+                    else {
+                        $QueryTable = [ordered]@{
+                            '1' = @{
+                                Params = @{}
+                                Text   = "Running query for all users."
+                            }
                         }
                     }
                 }

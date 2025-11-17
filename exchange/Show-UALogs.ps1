@@ -30,7 +30,7 @@ function Show-UALogs {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
 
             # start stopwatch
@@ -312,6 +312,12 @@ function Show-UALogs {
                 UserName = $UserName
             }
             switch ( $OperationString ) {
+                'AzureActiveDirectory Add member to role.' {
+                    $EventObject = Resolve-AzureActiveDirectoryAddRemoveRole -Log $Log
+                }
+                'AzureActiveDirectory Remove member from role.' {
+                    $EventObject = Resolve-AzureActiveDirectoryAddRemoveRole -Log $Log
+                }
                 'AzureActiveDirectory Update user.' {
                     $EventObject = Resolve-AzureActiveDirectoryUpdateUser -Log $Log
                 }
@@ -348,6 +354,12 @@ function Show-UALogs {
                 'ExchangeItemGroup SoftDelete' {
                     $EventObject = Resolve-ExchangeItemGroupDelete @EmailParams
                 }
+                'SharePoint PageViewed' {
+                    $EventObject = Resolve-SharePointPageViewed -Log $Log
+                }
+                'SharePoint PIMRoleAssigned' {
+                    $EventObject = Resolve-SharePointPIMRoleAssigned -Log $Log
+                }
                 'SharePoint SearchQueryPerformed' {
                     $EventObject = Resolve-SharePointSearchQueryPerformed -Log $Log
                 }
@@ -374,9 +386,6 @@ function Show-UALogs {
                 }
                 'SharePointFileOperation FileUploaded' {
                     $EventObject = Resolve-SharePointFileOperation -Log $Log
-                }
-                'SharePoint PageViewed' {
-                    $EventObject = Resolve-SharePointPageViewed -Log $Log
                 }
                 default {
                     $EventObject = [pscustomobject]@{
@@ -469,6 +478,16 @@ function Show-UALogs {
         #region CELL COLORING
 
         # ip addresses
+        # microsoft
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = 'microsoft'
+            BackgroundColor = 'LightBlue'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
         # vpn
         $CFParams = @{
             Worksheet       = $WorkSheet
@@ -496,16 +515,6 @@ function Show-UALogs {
             RuleType        = 'ContainsText'
             ConditionValue = 'proxy'
             BackgroundColor = 'LightPink'
-            StopIfTrue = $true
-        }
-        Add-ConditionalFormatting @CFParams
-        # microsoft
-        $CFParams = @{
-            Worksheet       = $WorkSheet
-            Address         = "${IpAddressColumn}:${IpAddressColumn}"
-            RuleType        = 'ContainsText'
-            ConditionValue  = 'microsoft'
-            BackgroundColor = 'LightBlue'
             StopIfTrue = $true
         }
         Add-ConditionalFormatting @CFParams

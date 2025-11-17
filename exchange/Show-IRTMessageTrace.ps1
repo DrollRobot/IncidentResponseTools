@@ -27,7 +27,7 @@ function Show-IRTMessageTrace {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -42,8 +42,6 @@ function Show-IRTMessageTrace {
         $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         $Yellow = @{ ForegroundColor = 'Yellow' }
-
-        if ($Test) {}
 
         # import from xml
         if ($ParameterSet -eq 'Xml') {
@@ -76,7 +74,7 @@ function Show-IRTMessageTrace {
             $Metadata = $Messages[0]
             $Messages.RemoveAt(0)
 
-            $UserEmail = $Metadata.UserEmail
+            $UserEmails = $Metadata.UserEmails
             $UserName = $Metadata.UserName
             $StartDate = $Metadata.StartDate
             $EndDate = $Metadata.EndDate
@@ -96,11 +94,11 @@ function Show-IRTMessageTrace {
         # build worksheet title
         $StartString = $StartDate.ToString($TitleDateFormat).ToLower()
         $EndString = $EndDate.ToString($TitleDateFormat).ToLower()
-        if ($null -eq $UserEmail) {
+        if ($null -eq $Username) {
             $WorksheetTitle = "Message Trace for ${DomainName}. Covers ${Days} days, from ${StartString} to ${EndString}."
         }
         else {
-            $WorksheetTitle = "Message Trace for ${UserEmail}. Covers ${Days} days, from ${StartString} to ${EndString}."
+            $WorksheetTitle = "Message Trace for ${Username}. Covers ${Days} days, from ${StartString} to ${EndString}."
         }
     }
 
@@ -205,24 +203,45 @@ function Show-IRTMessageTrace {
 
         #region BOLD OTHER EMAIL
 
-        if ($UserEmail) {
-            $CfParamsSender = @{
-                WorkSheet        = $Worksheet
-                Address          = "${SenderColumn}${TableStartRow}:${SenderColumn}${EndRow}"
-                RuleType         = 'NotEqual'
-                ConditionValue   = $UserEmail
-                Bold = $true
-            }
-            Add-ConditionalFormatting @CfParamsSender
+        if ($UserEmails) {
+            # # helper: make "=AND(LEN($A2)>0, $A2<>\"me1\", $A2<>\"me2\", ...)" for a column's anchor cell
+            # function New-CfNotMeFormula {
+            #     param([Parameter(Mandatory)][string]$ColumnLetter,
+            #         [Parameter(Mandatory)][int]$StartRow)
 
-            $CfParamsRecipient = @{
-                WorkSheet        = $Worksheet
-                Address          = "${RecipientColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
-                RuleType         = 'NotEqual'
-                ConditionValue   = $UserEmail
-                Bold = $true
-            }
-            Add-ConditionalFormatting @CfParamsRecipient
+            #     # anchor column absolute, row relative: $A2
+            #     $anchor = "`$${ColumnLetter}$StartRow"
+
+            #     # comparisons: $A2<> "alias"
+            #     $comparisons = $UserEmails.ForEach({
+            #         '{0}<>""{1}""' -f $anchor, ($_ -replace '"','""')
+            #     })
+
+            #     # skip blanks, and only bold when value is not any of my addresses
+            #     return '=AND(LEN({0})>0,{1})' -f $anchor, ($comparisons -join ',')
+            # }
+
+            # # sender column rule
+            # $FormulaSender = New-CfNotMeFormula -ColumnLetter $SenderColumn -StartRow $TableStartRow
+            # $CfParamsSender = @{
+            #     WorkSheet      = $Worksheet
+            #     Address        = "${SenderColumn}${TableStartRow}:${SenderColumn}${EndRow}"
+            #     RuleType       = 'Expression'
+            #     ConditionValue = $FormulaSender
+            #     Bold           = $true
+            # }
+            # Add-ConditionalFormatting @CfParamsSender
+
+            # # recipient column rule
+            # $FormulaRecipient = New-CfNotMeFormula -ColumnLetter $RecipientColumn -StartRow $TableStartRow
+            # $CfParamsRecipient = @{
+            #     WorkSheet      = $Worksheet
+            #     Address        = "${RecipientColumn}${TableStartRow}:${RecipientColumn}${EndRow}"
+            #     RuleType       = 'Expression'
+            #     ConditionValue = $FormulaRecipient
+            #     Bold           = $true
+            # }
+            # Add-ConditionalFormatting @CfParamsRecipient
         }
 
         #region SAME TO/FROM

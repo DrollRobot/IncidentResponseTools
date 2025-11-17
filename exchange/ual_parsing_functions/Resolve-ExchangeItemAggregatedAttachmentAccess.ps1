@@ -21,7 +21,7 @@ function Resolve-ExchangeItemAggregatedAttachmentAccess {
     process {
 
         # need to lookup email by ID.
-        #FIXME
+        #FIXME logs only contain id numbers AAMkADMyZGI3OTNlLTQ2YmMtNDU0MC05ZDEzLTY2NmZlNTc3NTU3MQBGAAAAAABDiQ7dEKTwSbR9ja6I0wIGBwBZKFzgmvpXRbRzj2mWaXIlAAAAAAENAACNpRQqi6YHQrBiBW3y6IBkAAf41Lo6AAA=
 
         # join strings, create return object
         $Summary = $SummaryLines -join "`n"

@@ -33,7 +33,7 @@ function Start-IncidentResponsePlaybookExToken {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -441,7 +441,7 @@ function Start-IncidentResponsePlaybookExToken {
                     }
                 }
 
-                Start-Sleep -Seconds 1
+                Start-Sleep -Seconds 10
                 if ( $Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
                     Write-Host @Magenta "Waiting on "
                 }

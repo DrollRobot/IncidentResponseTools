@@ -23,7 +23,7 @@ function Show-Mailbox {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         # $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
             # start stopwatch
             $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()

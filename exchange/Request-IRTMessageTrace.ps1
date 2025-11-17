@@ -38,13 +38,19 @@ function Request-IRTMessageTrace {
         [ValidateRange(1,90)]
         [int] $Days,
 
-        [int] $ResultLimit = 50000
+        [int] $ResultLimit = 50000,
+        [switch] $Test
     )
 
     begin {
 
         #region BEGIN
         $Function = $MyInvocation.MyCommand.Name
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
         $MaxPageSize = 5000
         $AbsoluteEnd   = Get-Date
         $AbsoluteStart = $AbsoluteEnd.AddDays(-1 * $Days)

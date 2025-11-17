@@ -29,7 +29,7 @@ function Show-SignInLogs {
         # constants
         $Function = $MyInvocation.MyCommand.Name
         $ParameterSet = $PSCmdlet.ParameterSetName
-        if ($Test) {
+        if ($Test -or $Script:Test) {
             $Script:Test = $true
 
             # start stopwatch
@@ -341,7 +341,7 @@ function Show-SignInLogs {
             Worksheet       = $WorkSheet
             Address         = "${IpAddressColumn}:${IpAddressColumn}"
             RuleType        = 'ContainsText'
-            ConditionValue  = 'vpn'
+            ConditionValue  = ' vpn'
             BackgroundColor = 'LightPink'
             StopIfTrue = $true
         }
@@ -351,7 +351,7 @@ function Show-SignInLogs {
             Worksheet       = $WorkSheet
             Address         = "${IpAddressColumn}:${IpAddressColumn}"
             RuleType        = 'ContainsText'
-            ConditionValue = 'tor'
+            ConditionValue = ' tor'
             BackgroundColor = 'LightPink'
             StopIfTrue = $true
         }
@@ -361,7 +361,7 @@ function Show-SignInLogs {
             Worksheet       = $WorkSheet
             Address         = "${IpAddressColumn}:${IpAddressColumn}"
             RuleType        = 'ContainsText'
-            ConditionValue = 'proxy'
+            ConditionValue = ' proxy'
             BackgroundColor = 'LightPink'
             StopIfTrue = $true
         }
@@ -381,7 +381,7 @@ function Show-SignInLogs {
             Worksheet       = $WorkSheet
             Address         = "${IpAddressColumn}:${IpAddressColumn}"
             RuleType        = 'ContainsText'
-            ConditionValue  = 'hosting'
+            ConditionValue  = ' hosting'
             BackgroundColor = [System.Drawing.ColorTranslator]::FromHtml('#FACD90') 
             StopIfTrue = $true
         }
@@ -391,7 +391,7 @@ function Show-SignInLogs {
             Worksheet       = $WorkSheet
             Address         = "${IpAddressColumn}:${IpAddressColumn}"
             RuleType        = 'ContainsText'
-            ConditionValue  = 'cloud'
+            ConditionValue  = ' cloud'
             BackgroundColor = [System.Drawing.ColorTranslator]::FromHtml('#FACD90') 
             StopIfTrue = $true
         }
