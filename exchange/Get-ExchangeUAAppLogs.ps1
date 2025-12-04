@@ -18,25 +18,24 @@ function Get-ExchangeUAAppLogs {
 
         [int] $Days = 3,
         [boolean] $Xml = $true,
-        [switch] $NoOpen
+        [switch] $NoOpen,
+        [switch] $Test
     )
 
     begin {
 
-        # verify connected to exchange
-        try {
-            $Domain = Get-AcceptedDomain
+        #region BEGIN
+
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
-        catch {}
-        if ( -not $Domain ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
-        }
-     
-        # variables
-        $AllLogs = [System.Collections.Generic.List[psobject]]::new()
-        $UniqueLogIds = [System.Collections.Generic.HashSet[psobject]]::new()
-        $UniqueLogs = [System.Collections.Generic.List[psobject]]::new()
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $DateString = Get-Date -Format $FileNameDateFormat
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -45,12 +44,27 @@ function Get-ExchangeUAAppLogs {
         # $Green = @{ ForegroundColor = 'Green' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
 
+        $AllLogs = [System.Collections.Generic.List[psobject]]::new()
+        $UniqueLogIds = [System.Collections.Generic.HashSet[psobject]]::new()
+        $UniqueLogs = [System.Collections.Generic.List[psobject]]::new()
+
+
+        # verify connected to exchange
+        try {
+            [void](Get-AcceptedDomain)
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        }
+
         # get client domain name for file output
         $DefaultDomain = Get-AcceptedDomain | Where-Object { $_.Default -eq $true }
         $DomainName = $DefaultDomain.DomainName -split '\.' | Select-Object -First 1
-
-        # get datetime string for filename
-        $DateString = Get-Date -Format $FileNameDateFormat
     }
 
     process {

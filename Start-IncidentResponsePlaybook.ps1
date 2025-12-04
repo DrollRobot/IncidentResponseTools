@@ -17,7 +17,7 @@ function Start-IncidentResponsePlaybook {
         [psobject[]] $UserObjects,
         [string] $Ticket,
         [switch] $NoFolder,
-        [int] $Threads = 10,
+        [int] $Threads = 15,
         [switch] $Test
     )
 
@@ -30,41 +30,59 @@ function Start-IncidentResponsePlaybook {
             Write-Host "Module version: ${ModuleVersion}"
         }
 
-       if ($Test) {
-            $Global:IRTTestMode = $true
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
 
-        # if not passed directly, find user in global variable
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
-
-            # get from global variables
-            $ScriptUserObjects = Get-GraphGlobalUserObjects
-                
-            # if none found, exit
-            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
-            }
-        }
-        else {
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
             $ScriptUserObjects = $UserObjects
         }
+        # if not, look for global objects
+        else {
+            
+            # get from global variables
+            $ScriptUserObjects = Get-GraphGlobalUserObjects
+            
+            # if none found, exit
+            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
+            }
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+        }
 
-        # confirm connected to exchange, graph
-        $ThrowConnectString = @()
+        # verify connected to graph
         if (-not (Get-MgContext)) {
-            $ThrowConnectString += 'Graph'
-            $Throw = $true
-        }
-        if (-not (Get-ConnectionInformation)) {
-            $ThrowConnectString += 'Exchange'
-            $Throw = $true
-        }
-        if ( $Throw ) {
-            $ThrowConnectString = $ThrowConnectString -join ', '
-            throw "Not connected to ${ThrowConnectString}. Exiting."
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Graph. Run Connect-MgGraph."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
 
-        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        # verify connected to exchange
+        try {
+            [void](Get-AcceptedDomain)
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        } 
     }
 
     process {
@@ -191,14 +209,14 @@ function Start-IncidentResponsePlaybook {
                     $ScriptUserObjects
                 )
             }
-            # Get-UserSignInLogs
+            # Get-SignInLogs
             @{  Script = { 
                     param( 
                         $WorkingPath,
                         $RunspaceUserObjects
                     )
                     Set-Location -Path $WorkingPath
-                    Get-UserSignInLogs -UserObjects $RunspaceUserObjects
+                    Get-SignInLogs -UserObjects $RunspaceUserObjects
                 }
                 Args  = @(
                     $WorkingPath,
@@ -265,36 +283,17 @@ function Start-IncidentResponsePlaybook {
             # download email rules
             Get-IRTInboxRules -UserObjects $ScriptUserObjects
 
-            # download 10 day message trace
-            $MTParams = @{
-                UserObjects = $ScriptUserObjects
-                Days = 90
-            }
-            try {
-                $MTParams =
-                Get-IRTMessageTrace @MTParams # uses Get-MessageTraceV2
-            }
-            catch {
-                Get-IRTMessageTraceV1 @MTParams  # uses Get-MessageTrace
-            }
+            # download maximum available user message trace
+            Get-IRTMessageTrace -Days 90 -UserObjects $ScriptUserObjects
 
-            # download specific UAL over longer period
-            # FIXME
+            # download user UAL
+            Get-UALogs -Days 1 -WaitOnMessageTrace:$true -UserObjects $ScriptUserObjects
 
-            # download all UAL
-            $UAParams = @{
-                UserObjects = $ScriptUserObjects
-                WaitOnMessageTrace = $true
-            }
-            Get-UserUALogs @UAParams
+            # # download high risk UAL
+            # Get-UALogs -AllUsers -RiskyOperations -Days 180
 
-            # download 10 day message trace for all users
-            try {
-                Get-IRTMessageTrace -AllUsers
-            }
-            catch {
-                Get-IRTMessageTraceV1 -AllUsers
-            }
+            # # # download 2 day message trace for all users
+            Get-IRTMessageTrace -AllUsers -Days 2
 
             ### wait for completion, collect errors
             while ($Global:Playbook_JobList.Completed -contains $false) {
@@ -321,9 +320,9 @@ function Start-IncidentResponsePlaybook {
                     }
                 }
 
-                Start-Sleep -Seconds 1
-                if ( $Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
-                    Write-Host @Magenta "Waiting on "
+                Start-Sleep -Seconds 10
+                if ( $Script:Test -and $Stopwatch.Elapsed.Minutes -ge 5 ) {
+                    Write-Host @Yellow "Waiting on "
                 }
             }
         }

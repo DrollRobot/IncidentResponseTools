@@ -6,7 +6,7 @@ New-Alias -Name 'Get-NonInteractiveLog' -Value 'Get-NonInteractiveLogs' -Force
 function Get-NonInteractiveLogs {
 	<#
 	.SYNOPSIS
-	A wrapper for Get-UserSignInLogs.
+	A wrapper for Get-SignInLogs.
 	
 	.NOTES
 	Version: 1.0.0
@@ -43,6 +43,6 @@ function Get-NonInteractiveLogs {
     process {
 
         # run command
-        Get-UserSignInLogs @Params
+        Get-SignInLogs @Params
     }
 }

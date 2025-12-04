@@ -18,16 +18,38 @@ function Get-EntraAuditLogs {
         [psobject[]] $UserObjects,
 
         [int] $Days = 30,
-        [switch] $All,
+        [switch] $AllUsers,
         [switch] $Beta,
         [switch] $Script,
-        [boolean] $Open = $true
+        [boolean] $Open = $true,
+        [switch] $Test
     )
 
     begin {
 
-        # if -All wasn't user, find user objects
-        if ( -not $All ) {
+        #region BEGIN
+
+        # constants
+        # $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+        $FilterStrings = [System.Collections.Generic.List[string]]::new()
+        $XmlPaths = [System.Collections.Generic.List[string]]::new()
+        $DateString = Get-Date -Format "yy-MM-dd_HH-mm"
+        $QueryStart = ( Get-Date ).AddDays( $Days * -1 ).ToString( "yyyy-MM-ddTHH:mm:ssZ" )
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        # $Red = @{ ForegroundColor = 'Red' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        # if -AllUsers wasn't user, find user objects
+        if ( -not $AllUsers ) {
 
             # if user objects not passed directly, find global
             if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
@@ -44,7 +66,7 @@ function Get-EntraAuditLogs {
                 $ScriptUserObjects = $UserObjects
             }
         }
-        # if -All was used, create fake user object user loop will happen
+        # if -AllUsers was used, create fake user object user loop will happen
         else {
 
             $ScriptUserObjects = @(
@@ -54,25 +76,9 @@ function Get-EntraAuditLogs {
             )
         }
 
-        # variables
-        $FilterStrings = [System.Collections.Generic.List[string]]::new()
-        $XmlPaths = [System.Collections.Generic.List[string]]::new()
-
-        # get datetime for query
-        $QueryStart = ( Get-Date ).AddDays( $Days * -1 ).ToString( "yyyy-MM-ddTHH:mm:ssZ" )
-
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-
         # get client domain name
         $DefaultDomain = Get-MgDomain | Where-Object { $_.IsDefault -eq $true }
         $DomainName = $DefaultDomain.Id -split '\.' | Select-Object -First 1
-
-        # get date/time string for filename
-        $DateString = Get-Date -Format "yy-MM-dd_HH-mm"
     }
 
     process {
@@ -85,10 +91,10 @@ function Get-EntraAuditLogs {
             $UserId = $ScriptUserObject.Id 
 
             # build file names
-            $XmlOutputPath = "EntraAuditLogs_Raw_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
+            $XmlOutputPath = "EntraAuditLogs_${Days}Days_${DomainName}_${UserName}_${DateString}.xml"
 
             # build filter string
-            if ( -not $All ) {
+            if ( -not $AllUsers ) {
                 $FilterStrings.Add( "targetResources/any(t:t/Id eq '${UserId}')" )
             }
             if ($Days -ne 30) {

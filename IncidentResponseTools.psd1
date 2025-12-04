@@ -12,7 +12,7 @@
     # RootModule = ''
 
     # Version number of this module.
-    ModuleVersion     = '2.4.2'
+    ModuleVersion     = '2.5.0'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -72,33 +72,33 @@
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules     = @(
-        'exchange\Get-IRTMessageTraceV1.ps1'
-        'exchange\Get-MessageTraceWithPaging.ps1'
         'exchange\Get-ExchangeUAAppLogs.ps1'
-        'exchange\Get-SpecificUALogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
-        'exchange\Get-IRTMessageTrace_OLD.ps1'
         'exchange\Get-IRTInboxRules.ps1'
         'exchange\Grant-MailboxFullAccess.ps1'
         'exchange\Remove-MailboxFullAccess.ps1'
         'exchange\Request-IRTMessageTrace.ps1'
-        'exchange\Merge-SortedArraysOnDate.ps1'
+        'exchange\Request-IRTMessageTraceV1.ps1'
+        'exchange\Merge-ListsOnDate.ps1'
         'exchange\Open-MailboxInOWA.ps1'
         'exchange\Show-IRTMessageTrace.ps1'
         'exchange\Show-Mailbox.ps1'
         'exchange\Show-MailboxAccess.ps1'
         'exchange\Show-UALogs.ps1'
-        'exchange\Get-UserUALogs.ps1'
+        'exchange\Get-UALogs.ps1'
+        'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryAddRemoveRole.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryUpdateUser.ps1'
+        'exchange\ual_parsing_functions\Resolve-ExchangeAdminInboxRule.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminSetConditionalAccessPolicy.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemAggregatedAttachmentAccess.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemAggregatedMailItemsAccessed.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemGroupDelete.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemSubject.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeItemUpdate.ps1'
-        'exchange\ual_parsing_functions\Resolve-SharePointFileOperationFileAccessed.ps1'
+        'exchange\ual_parsing_functions\Resolve-SharePointFileOperation.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointPageViewed.ps1'
+        'exchange\ual_parsing_functions\Resolve-SharePointPIMRoleAssigned.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointSearchQueryPerformed.ps1'
 
         'graph_applications\Compare-ServicePrincipals.ps1'
@@ -107,16 +107,14 @@
         'graph_applications\Save-ServicePrincipalData.ps1'
         'graph_applications\Show-Applications.ps1'
 
-        'graph_logs\Add-HumanErrorDescription.ps1'
+        'graph_logs\ConvertTo-HumanErrorDescription.ps1'
         'graph_logs\Add-HumanReadableId.ps1'
-        'graph_logs\Get-AllSignInLogs.ps1'
         'graph_logs\Get-EntraAuditLogs.ps1'
-        'graph_logs\Get-UserSignInLogs.ps1'
+        'graph_logs\Get-SignInLogs.ps1'
         'graph_logs\Get-NonInteractiveLogs.ps1'
         'graph_logs\Group-ByCorrelationId.ps1'
         'graph_logs\Import-LogFile.ps1'
         'graph_logs\Show-EntraAuditLogs.ps1'
-        'graph_logs\Show-SignInLog.ps1'
         'graph_logs\Show-SignInLogs.ps1'
 
         'graph_roles\Get-AdminRoles.ps1'
@@ -146,27 +144,26 @@
         'graph\Request-GraphUsers.ps1'
         'graph\Show-GraphGeoBlockPolicy.ps1'
 
+        'tools\PSPythonTools.ps1'
+        'tools\Convert-DecimalToExcelColumn.ps1'
+
         'Compress-InvestigationFolders.ps1'
         'Format-EventDateString.ps1'
         # 'Get-ExchangeAccessToken.ps1'
         'New-InvestigationDirectory.ps1'
         'Start-IncidentResponsePlaybook.ps1'
-        'Start-IncidentResponsePlaybookTEST.ps1'
-        # 'Start-IncidentResponsePlaybookNEW.ps1'
+        # 'Start-IncidentResponsePlaybookExToken.ps1'
     )
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
     FunctionsToExport = @(
         ### exchange
         'Get-ExchangeUAAppLogs'
-        'Get-SpecificUALogs'
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
-        'Get-IRTMessageTrace_OLD'
-        'Get-IRTMessageTraceV1'
         'Get-IRTInboxRules'
-        'Get-UserUALogs'
+        'Get-UALogs'
         'Grant-MailboxFullAccess'
         'Remove-MailboxFullAccess'
         'Open-MailboxInOWA'
@@ -192,13 +189,11 @@
         'Get-UserApplications'
 
         ### graph_logs
-        'Get-AllSignInLogs'
         'Get-EntraAuditLogs'
-        'Get-UserSignInLogs'
+        'Get-SignInLogs'
         'Group-ByCorrelationId'
         'Import-LogFile'
         'Show-EntraAuditLogs'
-        'Show-SignInLog'
         'Show-SignInLogs'
 
         ### graph_roles
@@ -229,7 +224,7 @@
         'Start-IncidentResponsePlaybookOLD'
         'Start-IncidentResponsePlaybook'
         'Start-IncidentResponsePlaybookTEST'
-        # 'Start-IncidentResponsePlaybookNEW'
+        # 'Start-IncidentResponsePlaybookExToken'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -249,13 +244,8 @@
         'GetUALogs'
         'GetUserUALog'
         'GetUserUALogs'
-        # Get-SpecificUALogs
-        'SpecUALogs'
-        'SpecificUALogs'
         # Get-IRTMessageTrace
         'MessageTrace'
-        # Get-IRTMessageTraceV1
-        'MessageTraceV1'
         # Get-IRTInboxRules
         'InboxRule'
         'InboxRules'
@@ -288,7 +278,7 @@
         ### graph_logs
         # Get-EntraAuditLogs
         'EALog'
-        'EAlog'
+        'EALogs'
         'GetEALog'
         'GetEALogs'
         'Get-EntraAuditLog'
@@ -300,7 +290,7 @@
         'GetNILogs'
         'Get-NonInteractiveLog'
 
-        # Get-UserSigninLogs
+        # Get-SignInLogs
         'SILog'
         'SILogs'
         'GetSILog'

@@ -9,31 +9,28 @@ function Resolve-ExchangeItemSubject {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
 
         # variables
-        $SummaryStrings = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
     }
 
     process {
 
         # Items
-        foreach ( $Item in $AuditData.Item ) {
+        foreach ( $Item in $Log.AuditData.Item ) {
 
             $Subject = $Item.Subject
-            $SummaryStrings.Add( "Subject: ${Subject}" )
+            $SummaryLines.Add( "Subject: ${Subject}" )
         }
 
         # join strings, create return object
-        $SummaryString = $SummaryStrings -join ', '
+        $Summary = $SummaryLines -join ', '
         $EventObject = [pscustomobject]@{
-            Summary = $SummaryString
+            Summary = $Summary
         }
 
         return $EventObject

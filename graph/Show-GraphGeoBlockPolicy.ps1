@@ -1,13 +1,25 @@
 New-Alias -Name 'GeoBlock' -Value 'Show-GraphGeoBlockPolicy' -Force
 function Show-GraphGeoBlockPolicy {
     param(
+        [switch] $Test
     )
 
     begin {
-        
-        # variables
-        $CAPolicies = Get-MgIdentityConditionalAccessPolicy -All
 
+        #region BEGIN
+
+        # constants
+        # $Function = $MyInvocation.MyCommand.Name
+        # $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+        $GroupDisplayProperties = @(
+            'DisplayName'
+            'Id'
+        )
         $UserProperties = @(
             'AccountEnabled'
             'DisplayName'
@@ -15,15 +27,6 @@ function Show-GraphGeoBlockPolicy {
             'OnPremisesSamAccountName'
             'Id'
         )
-        $Users = Request-GraphUsers
-
-        $GroupDisplayProperties = @(
-            'DisplayName'
-            'Id'
-        )
-        $Groups = Request-GraphGroups
-
-        # variables
         $GeoblockPatterns = @(
             'geo.?block'
             'Block Access from Non-US'
@@ -38,6 +41,10 @@ function Show-GraphGeoBlockPolicy {
         # $Green = @{ ForegroundColor = 'Green' }
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        $CAPolicies = Get-MgIdentityConditionalAccessPolicy -All
+        $Users = Request-GraphUsers
+        $Groups = Request-GraphGroups
     }
 
     process {

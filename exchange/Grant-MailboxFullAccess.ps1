@@ -20,33 +20,62 @@ function Grant-MailboxFullAccess {
 
     begin {
 
-        # if user objects not passed directly, find global
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
-        
+        #region BEGIN
+
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+
+        # colors
+        $Blue = @{ ForegroundColor = 'Blue' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
+        # $Red = @{ ForegroundColor = 'Red' }
+        # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
             # get from global variables
             $ScriptUserObjects = Get-GraphGlobalUserObjects
-                        
+            
             # if none found, exit
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
             }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
         }
 
         # verify connected to exchange
         try {
-            $Exchange = Get-ConnectionInformation
+            $Domain = Get-AcceptedDomain
         }
         catch {}
-        if ( -not $Exchange ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline."
+        if ( -not $Domain ) {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
-     
-        # variables
+    }
 
-        # get currently signed in user
+    process {
+
+        #region CURRENT USER
+
         if ( -not $GrantAccessTo ) {
             $AccountsList = [System.Collections.Generic.List[string]]::new()
             try {
@@ -93,15 +122,7 @@ function Grant-MailboxFullAccess {
             $GrantAccessTo = $AccountsList
         }
 
-        # colors
-        $Blue = @{ ForegroundColor = 'Blue' }
-        # $Cyan = @{ ForegroundColor = 'Cyan' }
-        # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
-        # $Magenta = @{ ForegroundColor = 'Magenta' }
-    }
-
-    process {
+        #region USER LOOP
 
         foreach ( $ScriptUserObject in $ScriptUserObjects ) {
 

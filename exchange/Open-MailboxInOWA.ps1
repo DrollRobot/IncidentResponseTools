@@ -21,31 +21,10 @@ function Open-MailboxInOWA {
 
     begin {
 
-        # if user objects not passed directly, find global
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
-        
-            # get from global variables
-            $ScriptUserObjects = Get-GraphGlobalUserObjects
-                        
-            # if none found, exit
-            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
-            }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
-        }
+        #region BEGIN
 
-        # verify connected to exchange
-        try {
-            $Exchange = Get-ConnectionInformation
-        }
-        catch {}
-        if ( -not $Exchange ) {
-            throw "Not connected to ExchangeOnlineManagement. Run Connect-ExchangeOnline. Exiting."
-        }
-     
-        # variables
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
@@ -53,6 +32,44 @@ function Open-MailboxInOWA {
         # $Green = @{ ForegroundColor = 'Green' }
         # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+
+        # if users passed via script argument:
+        if (($UserObjects | Measure-Object).Count -gt 0) {
+            $ScriptUserObjects = $UserObjects
+        }
+        # if not, look for global objects
+        else {
+            
+            # get from global variables
+            $ScriptUserObjects = Get-GraphGlobalUserObjects
+            
+            # if none found, exit
+            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                Write-Host @Red "${Function}: No user objects passed or found in global variables."
+                return
+            }
+            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+        }
+
+        # verify connected to exchange
+        try {
+            [void](Get-AcceptedDomain)
+        }
+        catch {
+            $ErrorParams = @{
+                Category    = 'ConnectionError'
+                Message     = "Not connected to Exchange. Run Connect-ExchangeOnline."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
+        }  
     }
 
     process {

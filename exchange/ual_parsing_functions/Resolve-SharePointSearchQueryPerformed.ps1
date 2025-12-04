@@ -9,28 +9,25 @@ function Resolve-SharePointSearchQueryPerformed {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
 
         # variables
-        $SummaryStrings = [System.Collections.Generic.List[string]]::new()
+        $SummaryLines = [System.Collections.Generic.List[string]]::new()
     }
 
     process {
 
         # SearchQueryText
-        $SearchQueryText = $AuditData.SearchQueryText
-        $SummaryStrings.Add( "SearchQueryText: ${SearchQueryText}" )
+        $SearchQueryText = $Log.AuditData.SearchQueryText
+        $SummaryLines.Add( "SearchQueryText: ${SearchQueryText}" )
 
         # join strings, create return object
-        $SummaryString = $SummaryStrings -join ', '
+        $Summary = $SummaryLines -join ', '
         $EventObject = [pscustomobject]@{
-            Summary = $SummaryString
+            Summary = $Summary
         }
 
         return $EventObject

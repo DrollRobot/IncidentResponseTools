@@ -30,23 +30,48 @@ function Request-IRTMessageTrace {
         [string[]] $SenderAddress,
         [string[]] $RecipientAddress,
 
+        # #FIXME convert to start and end dates
+        # [datetime] $StartDateUtc,
+        # [datetime] $EndDateUtc,
+
         [Parameter(Mandatory)]
         [ValidateRange(1,90)]
         [int] $Days,
 
-        [int] $ResultLimit = 50000
+        [int] $ResultLimit = 50000,
+        [switch] $Test
     )
 
     begin {
-        # variables (all comments lower case per your preference)
-        $Blue = @{ ForegroundColor = 'Blue' }
-        $AllMessages = [System.Collections.Generic.List[psobject]]::new()
-        $MaxPageSize = 5000
 
+        #region BEGIN
+        $Function = $MyInvocation.MyCommand.Name
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+            # start stopwatch
+            # $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        }
+        $MaxPageSize = 5000
         $AbsoluteEnd   = Get-Date
         $AbsoluteStart = $AbsoluteEnd.AddDays(-1 * $Days)
+        $AllMessages = [System.Collections.Generic.List[psobject]]::new()
 
-        # build non-overlapping 10-day Chunks, newest to oldest
+        # colors
+        $Blue = @{ForegroundColor = 'Blue'}
+        # $Green = @{ForegroundColor = 'Green'}
+        # $Magenta = @{ForegroundColor = 'Magenta'}
+        $Red = @{ForegroundColor = 'Red'}
+        $Yellow = @{ForegroundColor = 'Yellow'}
+
+        # # adjust start date if older than 90 days.
+        # $90DaysAgo = (Get-Date).AddDays(-90).ToUniversalTime()
+        # if ($StartDateUtc -lt $90DaysAgo) {
+        #     $DateString = $StartDateUtc.ToLocalTime().ToString('MM/dd/yy hh:mmtt')
+        #     Write-Host @Yellow "${Function}: ${DateString} is more than max range of 90 days. Setting to 90 days."
+        #     $StartDateUtc = $90DaysAgo
+        # }
+
+        # build non-overlapping 10-day chunks, newest to oldest
         $Chunks = [System.Collections.Generic.List[object]]::new()
         $ChunkEnd = $AbsoluteEnd
         while ($ChunkEnd -gt $AbsoluteStart) {
@@ -89,8 +114,31 @@ function Request-IRTMessageTrace {
             Write-Host @Blue "Requesting message trace from ${StartDateString} to ${EndDateString}"
 
             # request first page in this chunk
-            $Warn = @()
-            $Page = [psobject[]]@( Get-MessageTraceV2 @LoopParams 3>$null )
+            $SleepCount = 0
+            while ($true) {
+                try {
+                    $Warn = @()
+                    $Page = [psobject[]]@( Get-MessageTraceV2 @LoopParams 3>$null )
+                    break
+                }
+                catch {
+                    # handle exo throttling with backoff; on any other error, return what we have so far
+                    $IsRateLimit = $_.Exception.Message -match 'surpassed the permitted limit|try again later'
+                    $IsWriteError       = $_.FullyQualifiedErrorId -match 'Write-ErrorMessage'
+                    if ($IsRateLimit -and $IsWriteError -and $SleepCount -lt 5) {
+                        Write-Host @Red "${Function}: $($_.Exception.Message)" | Out-Host
+                        Write-Host @Yellow "${Function}: Pausing for 60 seconds..." | Out-Host
+                        $SleepCount++
+                        Start-Sleep -Seconds 60
+                        continue
+                    }
+                    else {
+                        Write-Host @Yellow "${Function}: Unable to complete operation. Returning."
+                        Write-Output $AllMessages
+                        return
+                    }
+                }
+            }
             $PageCount = ($Page | Measure-Object).Count
             Write-Host "Retrieved ${PageCount} messages."
 
@@ -146,12 +194,40 @@ function Request-IRTMessageTrace {
                 $StartDateString = $LoopParams.StartDate.ToString("MM/dd/yy")
                 $EndDateString = $LoopParams.EndDate.ToString("MM/dd/yy")
                 Write-Host @Blue "Requesting message trace from ${StartDateString} to ${EndDateString}"
-                $Warn = @()
-                $Page = [psobject[]]@( Get-MessageTraceV2 @LoopParams 3>$null )
+
+                $SleepCount = 0
+                while ($true) {
+                    try {
+                        $Warn = @()
+                        $Page = [psobject[]]@( Get-MessageTraceV2 @LoopParams 3>$null )
+                        break
+                    }
+                    catch {
+                        # handle exo throttling with backoff; on any other error, return what we have so far
+                        $IsRateLimit = $_.Exception.Message -match 'surpassed the permitted limit|try again later'
+                        $IsWriteError       = $_.FullyQualifiedErrorId -match 'Write-ErrorMessage'
+                        if ($IsRateLimit -and $IsWriteError -and $SleepCount -lt 5) {
+                            Write-Host @Red "${Function}: $($_.Exception.Message)" | Out-Host
+                            Write-Host @Yellow "${Function}: Pausing for 60 seconds..." | Out-Host
+                            $SleepCount++
+                            Start-Sleep -Seconds 60
+                            continue
+                        }
+                        else {
+                            Write-Host @Yellow "${Function}: Unable to complete operation. Returning."
+                            Write-Output $AllMessages
+                            return
+                        }
+                    }
+                }
+
                 $PageCount = ($Page | Measure-Object).Count
                 Write-Host "Retrieved ${PageCount} messages."
-                if ($Page.Count) { foreach ($m in $Page) { $AllMessages.Add($m) } }
-                if ($AllMessages.Count -ge $ResultLimit) { Write-Output ($AllMessages | Select-Object -First $ResultLimit); return }
+                foreach ($m in $Page) {$AllMessages.Add($m)} 
+                if (($AllMessages | Measure-Object).Count -ge $ResultLimit) { 
+                    Write-Output ($AllMessages | Select-Object -First $ResultLimit)
+                    return 
+                }
             }
 
             # if we got here, either page count < 5000 (done with this chunk) or no more Hint was provided

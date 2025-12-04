@@ -4,14 +4,20 @@ function Show-SignInLogs {
 	Processes Sign in log .XML file into Excel spreadsheet.
 	
 	.NOTES
-	Version: 1.1.2
+	Version: 1.1.3
+    1.1.3 - Added timers/progress for testing.
 	#>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='Objects')]
     param (
-        [Parameter( Position = 0 )]
+	    [Parameter(Position=0, Mandatory, ParameterSetName='Objects')]
+        [System.Collections.Generic.List[PSObject]] $Logs,
+
+        [Parameter(Mandatory, ParameterSetName='Xml')]
         [string] $XmlPath,
 
         [string] $TableStyle = 'Dark8',
+
+        [boolean] $IpInfo = $true,
         [boolean] $Open = $true,
         [switch] $Test
     )
@@ -20,155 +26,206 @@ function Show-SignInLogs {
 
         #region BEGIN
 
-        if ($Test) {
-            $Global:IRTTestMode = $true
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
+
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
-
-        # get file path
-        if ( $XmlPath ) {
-
-            $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
-            $Logs = Import-Clixml -Path $ResolvedXmlPath
-        }
-        else {
-        
-            # run import-logs to get file name
-            $ImportParams = @{
-                Pattern    = "^(SignInLogs|NonInteractiveLogs)_Raw_.*\.xml$"
-                ReturnPath = $true
-            }
-            $ResolvedXmlPath = Import-LogFile @ImportParams
-        
-            # use path to import logs
-            $Logs = Import-Clixml -Path $ResolvedXmlPath
-        }
-        
-        #region CONSTANTS
-
-        $OutputTable = [System.Collections.Generic.List[PSCustomObject]]::new()
-
-        # file variables
-        $WorksheetName = 'SignInLogs'
-        $FileNameDatePattern = "\d{2}-\d{2}-\d{2}_\d{2}-\d{2}"
-        $FileNameDateFormat = "yy-MM-dd_HH-mm"
-        $TitleDateFormat = "M/d/yy h:mmtt"
-
-        # event date formatting
         $RawDateProperty = 'CreatedDateTime'
         $DateColumnHeader = 'DateTime'
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Green = @{ ForegroundColor = 'Green' }
-        # $Red = @{ ForegroundColor = 'Red' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+        # $Red = @{ ForegroundColor = 'Red' }
+        $Yellow = @{ ForegroundColor = 'Yellow' }
 
-        # build new file name out of old one
-        $OldFileName = Split-Path -Path $ResolvedXmlPath -Leaf
-        $SplitFileName = $OldFileName -split '_'
-        $SplitFileName = $SplitFileName | Where-Object { $_ -ne 'Raw' }
-        $UserString = $SplitFileName[3]
-        $SplitFileName = $SplitFileName -replace '\.xml', '.xlsx'
-        $ExcelOutputPath = $SplitFileName -join '_'
-        
-        ### build worksheet title
-        # get number of days
-        $ExcelOutputPath -match "(\d{1,3})Days" | Out-Null
-        $Days = $Matches[1]
-        # get date range
-        $QueryDateString = $ExcelOutputPath | Select-String -Pattern $FileNameDatePattern -AllMatches | ForEach-Object { $_.Matches.Value }
-        $ParsedDate = [DateTime]::ParseExact( $QueryDateString, $FileNameDateFormat, $null )
-        $StartString = $ParsedDate.AddDays([int]$Days * -1).ToString( $TitleDateFormat ).ToLower()
-        $EndString = $ParsedDate.ToString( $TitleDateFormat ).ToLower()
-        # get username
-        if ( $UserString -eq 'AllUsers' ) {
-            # if all users, use domain as username
-            $UserString = $SplitFileName[2]
+        # import from xml
+        if ($ParameterSet -eq 'Xml') {
+            if ($Script:Test) {
+                $TestText = "Importing from Xml"
+                $TimerStart = $Stopwatch.Elapsed
+                Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+            }
+
+            try {
+                $ResolvedXmlPath = Resolve-ScriptPath -Path $XmlPath -File -FileExtension 'xml'
+                [System.Collections.Generic.List[PSObject]]$Logs = Import-CliXml -Path $ResolvedXmlPath
+            }
+            catch {
+                $_
+                $ErrorParams = @{
+                    Category    = 'ReadError'
+                    Message     = "Error importing from ${XmlPath}."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
+            }
+
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+            }
+        }
+
+        #region Metadata
+        if ($Logs[0].Metadata) {
+
+            # remove metadata from beginning of list
+            $Metadata = $Logs[0]
+            $Logs.RemoveAt(0)
+
+            # $UserEmail = $Metadata.UserEmail
+            $UserName = $Metadata.UserName
+            $StartDate = $Metadata.StartDate
+            $EndDate = $Metadata.EndDate
+            $Days = $Metadata.Days
+            $DomainName = $Metadata.DomainName
+            $FileNamePrefix = $Metadata.FileNamePrefix
+        }
+        else {
+            Write-Host @Red "${Function}: No Metadata found."
+        }
+
+        # build file name
+        $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
+        $ExcelOutputPath =  "${FileNamePrefix}_${Days}Days_${UserName}_${FileDateString}.xlsx"
+
+        # build worksheet title
+        $TitleDateFormat = "M/d/yy h:mmtt"
+        $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
+        $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
+        # if allusers, use domain as username
+        if ( $UserName -eq 'AllUsers' ) {
+            $UserName = $DomainName
         }
         # build title
-        if ( $SplitFileName[0] -eq 'SignInLogs' ) {
-            $WorksheetTitle = "Interactive sign-in logs for ${UserString}. Covers ${Days} days, ${StartString} to ${EndString}."
+        if ( $FileNamePrefix -eq 'SignInLogs' ) {
+            $WorksheetTitle = "Interactive sign-in logs for ${UserName}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
         }
-        elseif ( $SplitFileName[0] -eq 'NonInteractiveLogs' ) {
-            $WorksheetTitle = "Non-Interactive sign-in logs for ${UserString}. Covers ${Days} days, ${StartString} to ${EndString}."
+        elseif ( $FileNamePrefix -eq 'NonInteractiveLogs' ) {
+            $WorksheetTitle = "Non-Interactive sign-in logs for ${UserName}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
+        }
+
+        # ipinfo
+        if ($IpInfo) {
+            $IpInfoAddresses = [System.Collections.Generic.HashSet[string]]::new()
+
+            # check for presence of ip_info package
+            $IpInfoPackage = Test-PythonPackage -Name 'ip_info'
         }
     }
 
     process {
+        
+        #region FIRST LOOP
+        
+        foreach ($Log in $Logs) {
+            # collect ip addresses
+            if ($IpInfo) {
+                if ($Log.IpAddress) {
+                    try {
+                        $IpObject = [System.Net.IPAddress]$Log.IpAddress
+                    }
+                    catch {}
+                    if ($IpObject) {
+                        [void]$IpInfoAddresses.Add($IpObject.ToString())
+                    }
+                }
+            }
+        }
 
-        # add error description
-        $Logs = Add-HumanErrorDescription -Logs $Logs            
+        #region QUERY IPS
+        if ($IpInfo -and 
+            $IpInfoPackage.Present -and
+            ($IpInfoAddresses | Measure-Object).Count -gt 0
+        ) {
+
+            # query information for all IP addresses
+            if ($Script:Test) {
+                $TestText = "Querying ip info"
+                $TimerStart = $Stopwatch.Elapsed
+                Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+            }
+
+            $Code = 'import sys; from ip_info.main import cli; sys.exit(cli())'
+            & $IpInfoPackage.Python '-c' $Code --apis bulk --output_format none --ip_addresses $IpInfoAddresses
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host @Red "${Function}: ip_info query failed." | Out-Host
+            }
+
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+            }
+
+            # add ip info to global colection
+            if ($Script:Test) {
+                $TestText = "Creating ip info collection in global scope"
+                $TimerStart = $Stopwatch.Elapsed
+                Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+            }
+
+            if (($Global:IRT_IpInfo.Keys | Measure-Object).Count -eq 0) {
+                $Global:IRT_IpInfo = @{}
+            }
+            foreach ($Ip in $IpInfoAddresses) {
+                # if ip doesn't exist in table, add it.
+                if (-not $Global:IRT_IpInfo.ContainsKey($Ip)) {
+                    $Code = 'import sys; from ip_info.main import cli; sys.exit(cli())'
+                    $Params = @(
+                        '-c', $Code,
+                        '--apis','none',
+                        '--output_format','table',
+                        '--ip_addresses', $Ip.ToString()
+                    )
+                    $NewLine = [Environment]::NewLine
+                    $Output = ((& $IpInfoPackage.Python @Params) -join $NewLine).Trim()
+                    $Global:IRT_IpInfo[$Ip] = $Output
+                }
+            }
+
+            if ($Script:Test) {
+                $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+                Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+            }
+        }
+
+        #region ROW LOOP
+
+        if ($Script:Test) {
+            $TestText = "Row loop"
+            $TimerStart = $Stopwatch.Elapsed
+            Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+        }
     
-        # proccess each log
-        for ($i = 0; $i -lt $Logs.Count; $i++) {  
+        $RowCount = ($Logs | Measure-Object).Count
+        $Rows = [System.Collections.Generic.List[PSCustomObject]]::new($RowCount)
+        for ($i = 0; $i -lt $RowCount; $i++) {  
         
             $Log = $Logs[$i]
-            $CustomObject = [PSCustomObject]@{}
 
             # Raw
             $Raw = $Log | ConvertTo-Json -Depth 10
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Raw'
-                Value      = $Raw
-            }
-            $CustomObject | Add-Member @AddParams
 
             # Date/Time
-            $AddParams = @{
-                MemberType  = 'NoteProperty'
-                Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Log.$RawDateProperty
+            if ($Log.$RawDateProperty) {
+                $DateTime = $Log.$RawDateProperty.ToLocalTime()
             }
-            $CustomObject | Add-Member @AddParams
-
-            # user
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'UserPrincipalName'
-                Value      = $Log.UserPrincipalName
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # error
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Error'
-                Value      = $Log.Error
-            }
-            $CustomObject | Add-Member @AddParams
 
             # IpAddress
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'IpAddress'
-                Value      = $Log.IpAddress
+            $IpText = if ($Global:IRT_IpInfo.ContainsKey($Log.IpAddress)) {
+                $Global:IRT_IpInfo[$Log.IpAddress]
             }
-            $CustomObject | Add-Member @AddParams
-
-            # City
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'City'
-                Value      = $Log.Location.City
+            else {
+                $Log.IpAddress
             }
-            $CustomObject | Add-Member @AddParams
-
-            # State
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'State'
-                Value      = $Log.Location.State
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # country
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Co'
-                Value      = $Log.Location.CountryOrRegion
-            }
-            $CustomObject | Add-Member @AddParams
             
             # application display name / resource id
             if ( $Log.AppDisplayName ) {
@@ -177,28 +234,6 @@ function Show-SignInLogs {
             else {
                 $AppDisplayName = $Log.ResourceId
             }
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Application'
-                Value      = $AppDisplayName
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # Browser
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Browser'
-                Value      = $Log.DeviceDetail.Browser
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # OS
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'OS'
-                Value      = $Log.DeviceDetail.OperatingSystem
-            }
-            $CustomObject | Add-Member @AddParams
 
             # compress trust
             $Trust = switch ( $Log.DeviceDetail.TrustType ) {
@@ -215,107 +250,69 @@ function Show-SignInLogs {
                     $Log.DeviceDetail.TrustType
                 }
             }
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Trust'
-                Value      = $Trust
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # # add human readable useragent
-            # $AddParams = @{
-            #     Logs         = $Logs
-            #     Property     = 'UserAgent'
-            #     ColumnHeader = 'UserAgentHuman'
-            # }
-            # $Logs = Add-HumanReadableId @AddParams
-
-            # # UserAgentHuman
-            # $AddParams = @{
-            #     MemberType = 'NoteProperty'
-            #     Name       = 'UserAgent'
-            #     Value      = $Log.UserAgentHuman
-            # }
-            # $CustomObject | Add-Member @AddParams
-
-            # UserAgent (raw value)
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'UserAgent'
-                Value      = $Log.UserAgent
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # # add human readable session id
-            # $AddParams = @{
-            #     Logs         = $Logs
-            #     Property     = 'CorrelationID'
-            #     ColumnHeader = 'SessionHuman'
-            # }
-            # $Logs = Add-HumanReadableId @AddParams
-
-            # # SessionHuman
-            # $AddParams = @{
-            #     MemberType = 'NoteProperty'
-            #     Name       = 'Session'
-            #     Value      = $Log.SessionHuman
-            # }
-            # $CustomObject | Add-Member @AddParams
-
-            # Session (raw value)
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Session'
-                Value      = $Log.CorrelationId
-            }
-            $CustomObject | Add-Member @AddParams
-
-            # # add human readable token id
-            # $AddParams = @{
-            #     Logs         = $Logs
-            #     Property     = 'UniqueTokenIdentifier'
-            #     ColumnHeader = 'TokenHuman'
-            # }
-            # $Logs = Add-HumanReadableId @AddParams
-
-            # # Token
-            # $AddParams = @{
-            #     MemberType = 'NoteProperty'
-            #     Name       = 'Token'
-            #     Value      = $Log.TokenHuman
-            # }
-            # $CustomObject | Add-Member @AddParams
-
-            # Token (raw value)
-            $AddParams = @{
-                MemberType = 'NoteProperty'
-                Name       = 'Token'
-                Value      = $Log.UniqueTokenIdentifier
-            }
-            $CustomObject | Add-Member @AddParams
 
             # add to list
-            $OutputTable.Add( $CustomObject )
+            [void]$Rows.Add([PSCustomObject]@{
+                Raw = $Raw
+                $DateColumnHeader = $DateTime
+                UserPrincipalName = $Log.UserPrincipalName
+                Error = ConvertTo-HumanErrorDescription -ErrorCode $Log.Status.ErrorCode
+                IpAddress = $IpText
+                City = $Log.Location.City
+                State = $Log.Location.State
+                Co = $Log.Location.CountryOrRegion
+                Application = $AppDisplayName
+                Browser = $Log.DeviceDetail.Browser
+                OS = $Log.DeviceDetail.OperatingSystem
+                Trust = $Trust
+                UserAgent = $Log.UserAgent
+                Session = $Log.CorrelationId
+                Token = $Log.UniqueTokenIdentifier
+            })
+
+            if ($Script:Test -and ($i % 100 -eq 0)) {
+                $Percent = [int]( ($i / $RowCount ) * 100 )
+                $ProgressParams = @{
+                    Id              = 1
+                    Activity        = 'Row loop'
+                    Status          = "Completed ${i} of ${RowCount}"
+                    PercentComplete = $Percent
+                }
+                Write-Progress @ProgressParams
+            }
         }
 
-        # export spreadsheet
+        if ($Script:Test) {
+            Write-Progress -Id 1 -Activity 'Row loop' -Completed
+
+            $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+            Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+        }
+
+        #region EXPORT SPREADSHEET
+        if ($Script:Test) {
+            $TestText = "Exporting to excel"
+            $TimerStart = $Stopwatch.Elapsed
+            Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
+        }
+
         $ExcelParams = @{
             Path          = $ExcelOutputPath
-            WorkSheetname = $WorksheetName
+            WorkSheetname = $FileNamePrefix
             Title         = $WorksheetTitle
             TableStyle    = $TableStyle
-            AutoSize      = $true
+            # AutoSize      = $true # apparently very slow?
             FreezeTopRow  = $true
             Passthru      = $true
         }
         try {
-            $Workbook = $OutputTable | Export-Excel @ExcelParams
+            $Workbook = $Rows | Export-Excel @ExcelParams
         }
         catch {
             Write-Error "Unable to open new Excel document."
             if ( Get-YesNo "Try closing open files." ) {
                 try {
-                    $Workbook = $OutputTable | Export-Excel @ExcelParams
+                    $Workbook = $Rows | Export-Excel @ExcelParams
                 }
                 catch {
                     throw "Unable to open new Excel document. Exiting."
@@ -323,6 +320,11 @@ function Show-SignInLogs {
             }
         }
         $Worksheet = $Workbook.Workbook.Worksheets[$ExcelParams.WorksheetName]
+
+        if ($Script:Test) {
+            $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
+            Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+        }
 
         # get table ranges
         $SheetStartColumn = $WorkSheet.Dimension.Start.Column | Convert-DecimalToExcelColumn
@@ -332,9 +334,85 @@ function Show-SignInLogs {
         $EndColumn = $WorkSheet.Dimension.End.Column | Convert-DecimalToExcelColumn
         $EndRow = $WorkSheet.Dimension.End.Row
 
+        $IpAddressColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'IpAddress'}).Id | Convert-DecimalToExcelColumn
+        $ApplicationColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'Application'}).Id | Convert-DecimalToExcelColumn
+        $UserAgentColumn = ($Worksheet.Tables[0].Columns | Where-Object {$_.Name -eq 'UserAgent'}).Id | Convert-DecimalToExcelColumn
+
         #region CELL COLORING
 
-        # if cell matches EXACTLY, make background RED
+        # ip addresses
+        # microsoft
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = 'microsoft'
+            BackgroundColor = 'LightBlue'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # vpn
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = ' vpn'
+            BackgroundColor = 'LightPink'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # tor
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue = ' tor'
+            BackgroundColor = 'LightPink'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # proxy
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue = ' proxy'
+            BackgroundColor = 'LightPink'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # hosting
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = ' hosting'
+            BackgroundColor = [System.Drawing.ColorTranslator]::FromHtml('#FACD90') 
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # cloud
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = ' cloud'
+            BackgroundColor = [System.Drawing.ColorTranslator]::FromHtml('#FACD90') 
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+        # mobile
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = 'mobile'
+            BackgroundColor = [System.Drawing.ColorTranslator]::FromHtml('#F2CEEF') 
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
+
+        # applications
         $Strings = @(
             'Azure Active Directory PowerShell'
             'Microsoft Azure CLI'
@@ -344,7 +422,7 @@ function Show-SignInLogs {
         foreach ( $String in $Strings ) {
             $CFParams = @{
                 Worksheet       = $WorkSheet
-                Address         = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
+                Address         = "${ApplicationColumn}:${ApplicationColumn}"
                 RuleType        = 'Equal'
                 ConditionValue  = $String
                 BackgroundColor = 'LightPink'
@@ -352,7 +430,7 @@ function Show-SignInLogs {
             Add-ConditionalFormatting @CFParams
         }
 
-        # if cell CONTAINSTEXT, make background RED
+        # user agents
         $Strings = @(
             'axios'
             'BAV2ROPC'
@@ -360,7 +438,7 @@ function Show-SignInLogs {
         foreach ( $String in $Strings ) {
             $CFParams = @{
                 Worksheet       = $WorkSheet
-                Address         = "${TableStartColumn}${TableStartRow}:${EndColumn}${EndRow}"
+                Address         = "${UserAgentColumn}:${UserAgentColumn}"
                 RuleType        = 'ContainsText'
                 ConditionValue  = $String
                 BackgroundColor = 'LightPink'
@@ -370,33 +448,75 @@ function Show-SignInLogs {
 
         #region COLUMN WIDTH
 
-        # resize DateTime column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
+        $Worksheet.Column($Column).Width = 8
+
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id
         $Worksheet.Column($Column).Width = 26
 
-        # resize Raw column
-        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
-        $Worksheet.Column($Column).Width = 8
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'UserPrincipalName' } ).Id 
+        $Worksheet.Column($Column).Width = 30
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Error' } ).Id 
+        $Worksheet.Column($Column).Width = 25
         
-        # resize Co column (Country)
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'IpAddress' } ).Id
+        $Worksheet.Column($Column).Width = 20
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'City' } ).Id
+        $Worksheet.Column($Column).Width = 10
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'State' } ).Id
+        $Worksheet.Column($Column).Width = 10
+
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Co' } ).Id
         $Worksheet.Column($Column).Width = 6
 
-        # resize Session column
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Application' } ).Id
+        $Worksheet.Column($Column).Width = 25
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Browser' } ).Id
+        $Worksheet.Column($Column).Width = 20
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'OS' } ).Id
+        $Worksheet.Column($Column).Width = 12
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Trust' } ).Id
+        $Worksheet.Column($Column).Width = 12
+
+        $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'UserAgent' } ).Id
+        $Worksheet.Column($Column).Width = 150
+
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Session' } ).Id
         $Worksheet.Column($Column).Width = 10
 
-        # resize Token column
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Token' } ).Id
         $Worksheet.Column($Column).Width = 10
 
         #region FORMATTING
 
+        # FIXME implement this method rather than formatted text strings with Format-EventDateString
+        # set date format 
+        $FmtParams = @{
+            Worksheet = $Worksheet
+            Range = "B:B"
+            NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        }
+        Set-Format @FmtParams
+
+        # set text wrapping on ip address column
+        $WrapParams = @{
+            Worksheet = $Worksheet
+            Range = "${IpAddressColumn}:${IpAddressColumn}"
+            WrapText = $true
+        }
+        Set-Format @WrapParams
+
         # set font and size
         $SetParams = @{
             Worksheet = $Worksheet
             Range     = "${SheetStartColumn}${SheetStartRow}:${EndColumn}${EndRow}"
-            FontName  = 'Roboto'
+            FontName  = 'Consolas'
         }
         try {
             Set-ExcelRange @SetParams
@@ -411,11 +531,24 @@ function Show-SignInLogs {
         }
         Set-Format @BorderParams
 
+        # set row height
+        # $HeightParams = @{
+        #     Worksheet = $Worksheet
+        #     Row = ($TableStartRow..$EndRow)
+        #     Height = 15
+        # }
+        # Set-ExcelRow @HeightParams
+        for ( $i = $TableStartRow; $i -le $EndRow; $i++ ) {
+            $Row = $Worksheet.Row($i)
+            $Row.Height = 15
+            $Row.CustomHeight = $true
+        }
+
         #region OUTPUT
                     
         # save and close
         Write-Host @Blue "Exporting to: ${ExcelOutputPath}"
-        if ( $Open ) {
+        if ($Open) {
             Write-Host @Blue "Opening Excel."
             $Workbook | Close-ExcelPackage -Show
         }

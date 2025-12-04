@@ -9,10 +9,7 @@ function Resolve-AzureActiveDirectoryUpdateUser {
     [CmdletBinding()]
     param (
         [Parameter( Mandatory )]
-        [psobject] $Log,
-
-        [Parameter( Mandatory )]
-        [psobject] $AuditData
+        [psobject] $Log
     )
 
     begin {
@@ -24,7 +21,7 @@ function Resolve-AzureActiveDirectoryUpdateUser {
     process {
 
         # ModifiedProperties
-        $Properties = ( $AuditData.ModifiedProperties | 
+        $Properties = ( $Log.AuditData.ModifiedProperties | 
             Where-Object { $_.Name -eq "Included Updated Properties" } ).NewValue
         foreach ( $Property in $Properties ) {
             $SummaryStrings.Add( "Property: ${Property}" )
