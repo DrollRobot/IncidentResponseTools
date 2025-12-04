@@ -86,6 +86,12 @@ function Show-IRTMessageTrace {
             Write-Error "${Function}: No Metadata found."
         }
 
+        # exit if no messages found
+        if (($Messages | Measure-Object).Count -eq 0) {
+            Write-Host @Red "${Function}: No messages found. Exiting"
+            return
+        }
+
         # build file name
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
         $FileDateString = $EndDate.ToLocalTime().ToString($FileNameDateFormat)
@@ -103,6 +109,11 @@ function Show-IRTMessageTrace {
     }
 
     process {
+
+        # exit if no messages
+        if (($Messages | Measure-Object).Count -eq 0) {
+            Write-Host @Red "${Function}: No messages. Exiting."
+        }
 
         #region ROW LOOP
 
@@ -173,14 +184,20 @@ function Show-IRTMessageTrace {
             $Workbook = $Rows | Export-Excel @ExcelParams
         }
         catch {
-            Write-Error "Unable to open new Excel document."
-            if ( Get-YesNo "Try closing open files." ) {
+            $_
+            Write-Host @Red "Error while opening Excel document."
+            if ( Get-YesNo "Try again?" ) {
                 try {
                     $Workbook = $Rows | Export-Excel @ExcelParams
                 }
                 catch {
-                    throw "Unable to open new Excel document. Exiting."
+                    $_
+                    Write-Host @Red "Error while opening Excel document. Exiting."
+                    return
                 }
+            }
+            else {
+                return
             }
         }
         $Worksheet = $Workbook.Workbook.Worksheets[$ExcelParams.WorksheetName]
@@ -288,6 +305,15 @@ function Show-IRTMessageTrace {
         $Worksheet.Column($Column).Width = 200
 
         #region FORMATTING
+
+        # FIXME implement this method rather than formatted text strings with Format-EventDateString
+        # # set date format 
+        # $FmtParams = @{
+        #     Worksheet = $Worksheet
+        #     Range = "B:B"
+        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        # }
+        # Set-Format @FmtParams
 
         # set font and size
         $SetParams = @{

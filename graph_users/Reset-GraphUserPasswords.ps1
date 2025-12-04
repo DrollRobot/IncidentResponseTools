@@ -83,7 +83,8 @@ function Reset-GraphUserPasswords {
                 'RandomCharacters' {
                     $UserEmail = $ScriptUserObject.UserPrincipalName
                     $Password = Get-RandomPassword 30
-                    Write-Host "${UserEmail} new password:`n${Password}"
+                    # Console WriteLine prevents password from bring recorded in transcripts
+                    [Console]::WriteLine("${UserEmail} new password:`n${Password}")
                 }
             }
 

@@ -292,7 +292,7 @@ function Start-IncidentResponsePlaybook {
             # # download high risk UAL
             # Get-UALogs -AllUsers -RiskyOperations -Days 180
 
-            # # download 2 day message trace for all users
+            # # # download 2 day message trace for all users
             Get-IRTMessageTrace -AllUsers -Days 2
 
             ### wait for completion, collect errors

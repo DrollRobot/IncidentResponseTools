@@ -1,5 +1,8 @@
 function Format-EventDateString {
     <#
+
+    # FIXME Delete this file once converted over to using native excel date formatting.
+
     .SYNOPSIS
     Builds a date/time string that will be easily readable in a spreadsheet.
     #>

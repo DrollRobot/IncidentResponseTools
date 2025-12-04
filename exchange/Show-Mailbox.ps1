@@ -87,7 +87,12 @@ function Show-Mailbox {
             # get user mailbox info
             $UserPrincipalName = $ScriptUserObject.UserPrincipalName
             try {
-                $Mailbox = Get-EXOMailbox -UserPrincipalName $UserPrincipalName -PropertySets All
+                $Params = @{
+                    UserPrincipalName = $UserPrincipalName
+                    PropertySets = 'All'
+                    ErrorAction = 'Stop'
+                }
+                $Mailbox = Get-EXOMailbox @Params
             }
             catch {}
             if ( -not $Mailbox ) {

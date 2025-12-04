@@ -76,7 +76,7 @@ function Show-UALogs {
         # $ServicePrincipals = Request-GraphServicePrincipals
         # $Users = Request-GraphUsers
 
-        #region Metadata
+        #region METADATA
         if ($Logs[0].Metadata) {
 
             # remove metadata from beginning of list
@@ -622,6 +622,15 @@ function Show-UALogs {
         $Worksheet.Column($Column).Width = 200
 
         #region FORMATTING
+
+        # FIXME implement this method rather than formatted text strings with Format-EventDateString
+        # # set date format 
+        # $FmtParams = @{
+        #     Worksheet = $Worksheet
+        #     Range = "B:B"
+        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        # }
+        # Set-Format @FmtParams
 
         # set text wrapping on specific columns
         $WrappingParams = @{

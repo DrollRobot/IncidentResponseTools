@@ -254,6 +254,21 @@ function Get-IRTMessageTrace {
                 $UserName = 'AllUsers'
             }
             else {
+
+                # verify user has mailbox. if not, exit.
+                try {
+                    $Params = @{
+                        UserPrincipalName = $ScriptUserObject.UserPrincipalName
+                        ErrorAction = 'Stop'
+                    }
+                    $Mailbox = Get-EXOMailbox @Params
+                }
+                catch {}
+                if (-not $Mailbox) {
+                    Write-Host @Red "${Function}: $($ScriptUserObject.UserPrincipalName) does not have a mailbox. Exiting"
+                    return
+                }
+
                 $UserName = $ScriptUserObject.UserPrincipalName -split '@' | Select-Object -First 1
 
                 $LoopUserEmails = [System.Collections.Generic.HashSet[string]]::new()
@@ -283,7 +298,7 @@ function Get-IRTMessageTrace {
             if ( $AllUsers ) {
 
                 Write-Host @Blue "Getting message trace records for all users."
-                [System.Collections.Generic.List[psobject]]$Messages = if ($V1) {
+                [System.Collections.Generic.List[psobject]]$AllMessages = if ($V1) {
                     $Params = @{
                         StartDate = $StartDateUtc
                         EndDate = $EndDateUtc
@@ -367,6 +382,12 @@ function Get-IRTMessageTrace {
                     }
                     [System.Collections.Generic.List[psobject]]$AllMessages = Merge-ListsOnDate @MergeParams
                 }
+            }
+
+            # exit if no messages found
+            if (($AllMessages | Measure-Object).Count -eq 0) {
+                Write-Host @Red "${Function}: No messages found. Exiting"
+                return
             }
 
             #region METADATA

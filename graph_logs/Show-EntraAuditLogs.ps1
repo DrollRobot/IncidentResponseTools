@@ -519,6 +519,15 @@ function Show-EntraAuditLogs {
 
         #region FORMATTING
 
+        # FIXME implement this method rather than formatted text strings with Format-EventDateString
+        # # set date format 
+        # $FmtParams = @{
+        #     Worksheet = $Worksheet
+        #     Range = "B:B"
+        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        # }
+        # Set-Format @FmtParams
+
         # set font and size
         $SetParams = @{
             Worksheet = $Worksheet

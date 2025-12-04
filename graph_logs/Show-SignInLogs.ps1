@@ -197,7 +197,7 @@ function Show-SignInLogs {
             }
         }
 
-        #region Row Loop
+        #region ROW LOOP
 
         if ($Script:Test) {
             $TestText = "Row loop"
@@ -213,6 +213,11 @@ function Show-SignInLogs {
 
             # Raw
             $Raw = $Log | ConvertTo-Json -Depth 10
+
+            # Date/Time
+            if ($Log.$RawDateProperty) {
+                $DateTime = $Log.$RawDateProperty.ToLocalTime()
+            }
 
             # IpAddress
             $IpText = if ($Global:IRT_IpInfo.ContainsKey($Log.IpAddress)) {
@@ -249,7 +254,7 @@ function Show-SignInLogs {
             # add to list
             [void]$Rows.Add([PSCustomObject]@{
                 Raw = $Raw
-                $DateColumnHeader = Format-EventDateString $Log.$RawDateProperty
+                $DateColumnHeader = $DateTime
                 UserPrincipalName = $Log.UserPrincipalName
                 Error = ConvertTo-HumanErrorDescription -ErrorCode $Log.Status.ErrorCode
                 IpAddress = $IpText
@@ -336,6 +341,16 @@ function Show-SignInLogs {
         #region CELL COLORING
 
         # ip addresses
+        # microsoft
+        $CFParams = @{
+            Worksheet       = $WorkSheet
+            Address         = "${IpAddressColumn}:${IpAddressColumn}"
+            RuleType        = 'ContainsText'
+            ConditionValue  = 'microsoft'
+            BackgroundColor = 'LightBlue'
+            StopIfTrue = $true
+        }
+        Add-ConditionalFormatting @CFParams
         # vpn
         $CFParams = @{
             Worksheet       = $WorkSheet
@@ -363,16 +378,6 @@ function Show-SignInLogs {
             RuleType        = 'ContainsText'
             ConditionValue = ' proxy'
             BackgroundColor = 'LightPink'
-            StopIfTrue = $true
-        }
-        Add-ConditionalFormatting @CFParams
-        # microsoft
-        $CFParams = @{
-            Worksheet       = $WorkSheet
-            Address         = "${IpAddressColumn}:${IpAddressColumn}"
-            RuleType        = 'ContainsText'
-            ConditionValue  = 'microsoft'
-            BackgroundColor = 'LightBlue'
             StopIfTrue = $true
         }
         Add-ConditionalFormatting @CFParams
@@ -489,6 +494,15 @@ function Show-SignInLogs {
         $Worksheet.Column($Column).Width = 10
 
         #region FORMATTING
+
+        # FIXME implement this method rather than formatted text strings with Format-EventDateString
+        # set date format 
+        $FmtParams = @{
+            Worksheet = $Worksheet
+            Range = "B:B"
+            NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        }
+        Set-Format @FmtParams
 
         # set text wrapping on ip address column
         $WrapParams = @{
