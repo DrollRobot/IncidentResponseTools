@@ -1,16 +1,16 @@
 function Test-PythonPackage {
     <#
     .SYNOPSIS
-    tests whether a python package (importable module) is available.
+    Tests whether a python package (importable module) is available.
 
     .PARAMETER Name
-    the python module name to import (e.g., 'requests' or 'pandas').
+    The python module name to import (e.g., 'requests' or 'pandas').
 
     .PARAMETER MinVersion
-    optional minimum version requirement (nuget-style: 1.2.3).
+    Optional minimum version requirement (nuget-style: 1.2.3).
 
     .PARAMETER PythonPath
-    optional explicit path to python interpreter. if omitted, tries python, python3, then py -3.
+    Optional explicit path to python interpreter. if omitted, tries python, python3, then py -3.
 
     .OUTPUTS
     [pscustomobject] with Present (bool), Version (string), Python (string path/command)
