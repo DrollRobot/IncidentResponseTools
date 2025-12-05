@@ -17,7 +17,6 @@ function Compare-ServicePrincipals {
         $OutputTable = [System.Collections.Generic.List[pscustomobject]]::new()
 
         $ModulePath = $PSScriptRoot
-        # $ModulePath = "C:\Users\ezappe\OneDrive - Systems Engineering\Documents\MyPowershell\GraphApplicationTools"
         $Folder = Join-Path -Path $ModulePath -ChildPath "\client_serviceprincipals\"
         $Files = Get-ChildItem -Path $Folder -File
         $GroupProperties = @(
