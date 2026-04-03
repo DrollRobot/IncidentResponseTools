@@ -111,10 +111,8 @@
         'exchange\ual_parsing_functions\Resolve-SharePointPIMRoleAssigned.ps1'
         'exchange\ual_parsing_functions\Resolve-SharepointSearchQueryPerformed.ps1'
 
-        'graph_applications\Compare-ServicePrincipals.ps1'
         'graph_applications\Find-RogueApps.ps1'
         'graph_applications\Get-UserApplications.ps1'
-        'graph_applications\Save-ServicePrincipalData.ps1'
         'graph_applications\Show-Applications.ps1'
 
         'graph_logs\Convert-TrustType.ps1'
@@ -200,10 +198,8 @@
         'Show-GraphGeoBlockPolicy'
 
         ### graph_applications
-        'Compare-ServicePrincipals'
         'Find-RogueApps'
         'Get-UserApplications'
-        'Save-ServicePrincipalData'
         'Show-Applications'
         'Get-UserApplications'
 
