@@ -3,6 +3,9 @@ function Get-ExchangeUAAppLogs {
     <#
 	.SYNOPSIS
     Runs multiple queries to pull all unified audit logs records related to a specific application/service principal.
+
+    .NOTES
+    Added service principal option to get-ualogs. This function no longer needed? Keeping around for a while just in case.
     
 	.NOTES
 	Version: 1.2.0
@@ -72,7 +75,7 @@ function Get-ExchangeUAAppLogs {
         foreach ( $Guid in $AppGuids ) {
 
             $GuidJustNumbers = $Guid -replace '-', ''
-            $XmlOutputPath = "UnifiedAuditLogs_Raw_${Days}Days_${DomainName}_${SearchName}_${DateString}.xml"
+            $XmlOutputPath = "UnifiedAuditLogs_${Days}Days_${DomainName}_${SearchName}_${DateString}.xml"
 
             # build query params
             $EndDate = (Get-Date).ToUniversalTime()

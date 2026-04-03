@@ -132,9 +132,15 @@ function Show-IRTMessageTrace {
             # Raw
             $Raw = $Message | ConvertTo-Json -Depth 10
 
+            # Date/Time
+            $DateTime = $null
+            if ($Message.$RawDateProperty) {
+                $DateTime = $Message.$RawDateProperty.ToLocalTime()
+            }
+
             $Rows.Add([pscustomobject]@{
                 Raw               = $Raw
-                $DateColumnHeader = (Format-EventDateString $Message.$RawDateProperty)
+                $DateColumnHeader = $DateTime
                 Status            = $Message.Status
                 SenderAddress     = $Message.SenderAddress
                 RecipientAddress  = $Message.RecipientAddress
@@ -306,14 +312,13 @@ function Show-IRTMessageTrace {
 
         #region FORMATTING
 
-        # FIXME implement this method rather than formatted text strings with Format-EventDateString
-        # # set date format 
-        # $FmtParams = @{
-        #     Worksheet = $Worksheet
-        #     Range = "B:B"
-        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
-        # }
-        # Set-Format @FmtParams
+        # set date format 
+        $FmtParams = @{
+            Worksheet = $Worksheet
+            Range = "B:B"
+            NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        }
+        Set-Format @FmtParams
 
         # set font and size
         $SetParams = @{

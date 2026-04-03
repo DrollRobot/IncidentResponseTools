@@ -61,8 +61,8 @@ function Find-UsersWithoutUsageLocation {
     
         if ( $Variable ) {
             Write-Host @Blue 'Setting $UserObjects global variable.'
-            $Global:UserObjects = $MatchingUsers
-            $null = $Global:UserObjects
+            $Global:IRT_UserObjects = $MatchingUsers
+            $null = $Global:IRT_UserObjects
         }
     }
 }

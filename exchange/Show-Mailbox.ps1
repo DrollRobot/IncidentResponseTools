@@ -55,7 +55,7 @@ function Show-Mailbox {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams

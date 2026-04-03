@@ -9,7 +9,8 @@ function Get-UALogs {
     Runs multiple queries to pull all unified audit logs records related to a specific user.
     
 	.NOTES
-	Version: 1.5.0
+	Version: 1.5.1
+    1.5.1 - Added function name to all output.
     1.5.0 - Added -AllUsers option, added test timers.
     1.4.0 - Updating to add metadata object, use shorter file names.
     1.3.0 - Updated to output objects.
@@ -23,6 +24,10 @@ function Get-UALogs {
         [Parameter(ParameterSetName='AllUsers')]
         [switch] $AllUsers,
 
+        [Parameter(Position = 0,ParameterSetName='ServicePrincipals')]
+        [Alias( 'ServicePrincipal' )]
+        [psobject[]] $ServicePrincipals,
+
         # relative date range
         [int] $Days, # default value set at #DEFAULTDAYS
         # absolute date range
@@ -31,6 +36,7 @@ function Get-UALogs {
 
         [string[]] $Operations,
         [switch] $RiskyOperations,
+        [switch] $SignInLogs,
         [string[]] $FreeText,
 
         [boolean] $Excel = $true,
@@ -61,28 +67,58 @@ function Get-UALogs {
         # $Magenta = @{ ForegroundColor = 'Magenta' }
         # $Yellow = @{ ForegroundColor = 'Yellow' }
 
+        # query profiles — add new entries here to support additional modes
+        $ProfileTable = [ordered]@{
+            Default = [pscustomobject]@{
+                FilePrefix   = 'UnifiedAuditLogs'
+                SheetTitle   = 'Unified audit logs'
+                DefaultDays  = 1
+                Operations   = [string[]]@()
+                ShowFunction = 'Show-UALogs'
+            }
+            RiskyOperations = [pscustomobject]@{
+                FilePrefix   = 'UALRiskyOperations'
+                SheetTitle   = 'UAL risky operations'
+                DefaultDays  = 180
+                Operations   = [string[]]@()
+                ShowFunction = 'Show-UALogs'
+            }
+            SignInLogs = [pscustomobject]@{
+                FilePrefix   = 'UALSignInLogs'
+                SheetTitle   = 'UAL sign-in logs'
+                DefaultDays  = 180
+                Operations   = [string[]]@('UserLoggedIn')
+                ShowFunction = 'Show-UALogs'
+            }
+        }
+        $ActiveProfile = switch ($true) {
+            $RiskyOperations { $ProfileTable['RiskyOperations']; break }
+            $SignInLogs      { $ProfileTable['SignInLogs'];      break }
+            default          { $ProfileTable['Default'] }
+        }
+
         # create user objects depending on parameters used
         switch ( $ParameterSet ) {
             'UserObjects' {
                 # if users passed via script argument:
                 if (($UserObjects | Measure-Object).Count -gt 0) {
-                    $ScriptUserObjects = $UserObjects
+                    $LoopObjects = $UserObjects
                 }
                 # if not, look for global objects
                 else {
                     
                     # get from global variables
-                    $ScriptUserObjects = Get-GraphGlobalUserObjects
+                    $LoopObjects = Get-GraphGlobalUserObjects
                     
                     # if none found, exit
-                    if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                    if ( -not $LoopObjects -or $LoopObjects.Count -eq 0 ) {
                         Write-Host @Red "${Function}: No user objects passed or found in global variables."
                         return
                     }
-                    if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
+                    if (($LoopObjects | Measure-Object).Count -eq 0) {
                         $ErrorParams = @{
                             Category    = 'InvalidArgument'
-                            Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                            Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                             ErrorAction = 'Stop'
                         }
                         Write-Error @ErrorParams
@@ -91,11 +127,14 @@ function Get-UALogs {
             }
             'AllUsers' {
                 # build user object with null principal name
-                $ScriptUserObjects = @(
+                $LoopObjects = @(
                     [pscustomobject]@{
                         UserPrincipalName = 'AllUsers'
                     }
                 )
+            }
+            'ServicePrincipals' {
+                $LoopObjects = $ServicePrincipals  
             }
         }
 
@@ -183,7 +222,7 @@ function Get-UALogs {
             # $DateRangeType = 'Relative'
             # set default value for days ### must be done after checking for relative/absolute arguments
             if (-not $Days) {
-                $Days = 1 #DEFAULTDAYS
+                $Days = $ActiveProfile.DefaultDays
             }
 
             $StartDateUtc = (Get-Date).AddDays($Days * -1).ToUniversalTime() 
@@ -199,19 +238,16 @@ function Get-UALogs {
         $OperationsSet = [System.Collections.Generic.Hashset[string]]::new()
         # add user specified operations
         foreach ($o in $Operations) {[void]$OperationsSet.Add($o)}
-        # add risk operations
+        # populate profile operations
         if ($RiskyOperations) {
             # import alloperations csv
             $ModulePath = $PSScriptRoot
-            $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
+            $AllOperationsFileName = 'unified_audit_log-all_operations.csv' # FIXME convert to using xlsx
             $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
             $OperationsCsvData = Import-Csv -Path $OperationsCsvPath
 
-            # get high risk operations
-            $HighRiskOperations = ($OperationsCsvData | Where-Object {$_.Risk -eq 'High'}).Operation
-
-            # add to set
-            foreach ($o in $HighRiskOperations) {[void]$OperationsSet.Add($o)}
+            # get high risk operations and store in active profile
+            $ActiveProfile.Operations = ($OperationsCsvData | Where-Object {$_.Risk -eq 'High'}).Operation
 
             # FIXME get these properly tagged in spreadsheet.
             # app consent
@@ -220,31 +256,41 @@ function Get-UALogs {
             # [void]$OperationsSet.Add("User registered security info") #FIXME
             # [void]$OperationsSet.Add("User registered all required security info") #FIXME
         }
+        # add profile operations to set
+        foreach ($o in $ActiveProfile.Operations) {[void]$OperationsSet.Add($o)}
     }
 
     process {
 
         #region USER LOOP
 
-        foreach ($ScriptUserObject in $ScriptUserObjects) {
+        foreach ($LoopObject in $LoopObjects) {
 
             $AllLogs = [System.Collections.Generic.List[psobject]]::new()
 
             # users
             switch ( $ParameterSet ) {
                 'UserObjects' {
-                    $UserId = $ScriptUserObject.Id
+                    $UserId = $LoopObject.Id
                     $UserIdNoDashes = $UserId -replace '-', ''
-                    $UserEmail = $ScriptUserObject.UserPrincipalName
-                    $UserName = $UserEmail -split '@' | Select-Object -First 1
+                    $UserEmail = $LoopObject.UserPrincipalName
+                    $ObjectName = $UserEmail -split '@' | Select-Object -First 1
                 }
                 'AllUsers' {
-                    $UserName = 'AllUsers'
+                    $ObjectName = 'AllUsers'
                     # don't add a user filter
                 }
+                'ServicePrincipals' {
+                    $ServicePrincipalId = $LoopObject.Id
+                    $ServicePrincipalIdNoDash = $LoopObject.Id -replace '-',''
+                    $AppId = $LoopObject.AppId
+                    $AppIdNoDash = $LoopObject.AppId -replace '-',''
+
+                    $ObjectName = $LoopObject.DisplayName -replace '[^a-zA-Z0-9]',''
+                }
             }
-            $FileNamePrefix = 'UnifiedAuditLogs'
-            $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${UserName}_${FileNameDateString}.xml"
+            $FileNamePrefix = $ActiveProfile.FilePrefix
+            $XmlOutputPath = "${FileNamePrefix}_${Days}Days_${ObjectName}_${FileNameDateString}.xml"
 
             # build query params
             $BaseParams = @{
@@ -268,25 +314,25 @@ function Get-UALogs {
                             Params = @{
                                 UserIds = $UserEmail, $UserId, $UserIdNoDashes
                             }
-                            Text   = "Running -UserIds query for ${UserEmail}, ${UserId}, ${UserIdNoDashes}"
+                            Text   = "${Function}: Running -UserIds query for ${UserEmail}, ${UserId}, ${UserIdNoDashes}"
                         }
                         '2' = @{
                             Params = @{
                                 FreeText = $UserEmail
                             }
-                            Text   = "Running -Freetext query for ${UserEmail}"
+                            Text   = "${Function}: Running -Freetext query for ${UserEmail}"
                         }
                         '3' = @{
                             Params = @{
                                 FreeText = $UserId
                             }
-                            Text   = "Running -Freetext query for ${UserId}"
+                            Text   = "${Function}: Running -Freetext query for ${UserId}"
                         }
                         '4' = @{
                             Params = @{
                                 FreeText = $UserIdNoDashes
                             }
-                            Text   = "Running -Freetext query for ${UserIdNoDashes}"
+                            Text   = "${Function}: Running -Freetext query for ${UserIdNoDashes}"
                         }
                     }
                     if ($FreeText) {
@@ -296,7 +342,7 @@ function Get-UALogs {
                                 Params = @{
                                     FreeText = $FreeTextString 
                                 }
-                                Text = "Running -FreeText '${FreeTextString}' query."
+                                Text = "${Function}: Running -FreeText '${FreeTextString}' query."
                             }
                             $Key++
                         }
@@ -311,7 +357,7 @@ function Get-UALogs {
                                 Params = @{
                                     FreeText = $FreeTextString 
                                 }
-                                Text = "Running FreeText '${FreeTextString}' query for all users."
+                                Text = "${Function}: Running FreeText '${FreeTextString}' query for all users."
                             }
                             $Key++
                         }
@@ -320,8 +366,54 @@ function Get-UALogs {
                         $QueryTable = [ordered]@{
                             '1' = @{
                                 Params = @{}
-                                Text   = "Running query for all users."
+                                Text   = "${Function}: Running query for all users."
                             }
+                        }
+                    }
+                }
+                'ServicePrincipals' {
+                    $QueryTable = [ordered]@{
+                        '1' = @{
+                            Params = @{
+                                UserIds = $ServicePrincipalId, $ServicePrincipalIdNoDash, $AppId, $AppIdNoDash
+                            }
+                            Text   = "${Function}: Running -UserIds query for ${ServicePrincipalId}, ${ServicePrincipalIdNoDash}, ${AppId}, ${AppIdNoDash}"
+                        }
+                        '2' = @{
+                            Params = @{
+                                FreeText = $ServicePrincipalId
+                            }
+                            Text   = "${Function}: Running -Freetext query for ${ServicePrincipalId}"
+                        }
+                        '3' = @{
+                            Params = @{
+                                FreeText = $ServicePrincipalIdNoDash
+                            }
+                            Text   = "${Function}: Running -Freetext query for ${ServicePrincipalIdNoDash}"
+                        }
+                        '4' = @{
+                            Params = @{
+                                FreeText = $AppId
+                            }
+                            Text   = "${Function}: Running -Freetext query for ${AppId}"
+                        }
+                        '5' = @{
+                            Params = @{
+                                FreeText = $AppIdNoDash
+                            }
+                            Text   = "${Function}: Running -Freetext query for ${AppIdNoDash}"
+                        }
+                    }
+                    if ($FreeText) {
+                        $Key = 6
+                        foreach ($FreeTextString in $FreeText) {
+                            $QueryTable["$Key"] = @{
+                                Params = @{
+                                    FreeText = $FreeTextString 
+                                }
+                                Text = "${Function}: Running -FreeText '${FreeTextString}' query."
+                            }
+                            $Key++
                         }
                     }
                 }
@@ -352,7 +444,7 @@ function Get-UALogs {
 
                 if ($LogCount -gt 0) {
 
-                    Write-Host @Blue "Retrieved ${LogCount} logs."
+                    Write-Host @Blue "${Function}: Retrieved ${LogCount} logs."
 
                     # add to list
                     foreach ($i in $Page) {$AllLogs.Add($i)}
@@ -364,7 +456,7 @@ function Get-UALogs {
                     $NextPageParams['SessionId'] = $SessionId
                 }
                 else {
-                    Write-Host @Red "Retrieved 0 logs."
+                    Write-Host @Red "${Function}: Retrieved 0 logs."
                 }
 
                 # retrieve pages
@@ -376,7 +468,7 @@ function Get-UALogs {
 
                     if ( $LogCount -gt 0 ) {
 
-                        Write-Host @Blue "Retrieved ${LogCount} logs."
+                        Write-Host @Blue "${Function}: Retrieved ${LogCount} logs."
 
                         # add to list
                         foreach ($i in $Page) {$AllLogs.Add($i)}
@@ -385,7 +477,7 @@ function Get-UALogs {
                         $SessionId = $Page[0].SessionId
                     }
                     else {
-                        Write-Host @Red "Retrieved 0 logs."
+                        Write-Host @Red "${Function}: Retrieved 0 logs."
                     }
 
                     $PageCount++
@@ -399,7 +491,7 @@ function Get-UALogs {
 
             # exit if no logs returned
             if (($AllLogs | Measure-Object).Count -eq 0) {
-                Write-Host @Red "0 total logs retrieved. Exiting."
+                Write-Host @Red "${Function}: 0 total logs retrieved. Exiting."
                 return
             }
 
@@ -440,14 +532,15 @@ function Get-UALogs {
             $Logs.Insert(0,
                 [pscustomobject]@{
                     Metadata = $true
-                    UserObject = $ScriptUserObject
+                    UserObject = $LoopObject
                     UserEmail = $UserEmail
-                    UserName = $UserName
+                    UserName = $ObjectName
                     StartDate = $StartDateUtc.ToLocalTime()
                     EndDate = $EndDateUtc.ToLocalTime()
                     Days = $Days
                     DomainName = $DomainName
                     FileNamePrefix = $FileNamePrefix
+                    SheetTitle = $ActiveProfile.SheetTitle
                 }
             )
 
@@ -456,7 +549,7 @@ function Get-UALogs {
             # show count, export
             $LogCount = ($Logs | Measure-Object).Count
             if ($LogCount -gt 0) {
-                Write-Host @Blue "Retrieved ${LogCount} logs."
+                Write-Host @Blue "${Function}: Retrieved ${LogCount} logs."
 
                # export to xml
                 if ($Xml) {
@@ -466,7 +559,7 @@ function Get-UALogs {
                         Write-Host @Yellow "${Function}: ${TestText} started at $(Get-Date -Format 'hh:mm:sstt')" | Out-Host
                     }
 
-                    Write-Host @Blue "`nSaving logs to: ${XmlOutputPath}"
+                    Write-Host @Blue "`n${Function}: Saving logs to: ${XmlOutputPath}"
                     $Logs | Export-Clixml -Depth 10 -Path $XmlOutputPath
 
                     if ($Script:Test) {
@@ -481,11 +574,11 @@ function Get-UALogs {
                         Logs = $Logs
                         WaitOnMessageTrace = $WaitOnMessageTrace
                     }
-                    Show-UALogs @Params
+                    & $ActiveProfile.ShowFunction @Params
                 }
             }
             else {
-                Write-Host @Red "Retrieved 0 logs."
+                Write-Host @Red "${Function}: Retrieved 0 logs."
             }
         }
     }

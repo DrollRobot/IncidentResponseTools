@@ -4,7 +4,7 @@ New-Alias -Name 'Find-User' -Value 'Find-Users' -Force
 function Find-Users {
     <#
     .SYNOPSIS
-    Finds graph user by displayname, email address, or user id guid. Creates $UserObject or $UserObjects variables.
+    Finds graph user by displayname, email address, or user id guid. Creates $UserObjects variable.
 
     .EXAMPLE
     Find-Users flast
@@ -108,45 +108,20 @@ function Find-Users {
             return @($ScriptUserObjects)
         }
 
-        # if one user
-        if ( ($ScriptUserObjects | Measure-Object).Count -eq 1) {
+        if ( $ScriptUserObjects.Count -gt 0 ) {
 
-            # set objects
             $VariableParams = @{
-                Name  = "${VarPrefix}UserObject"
-                Value = $ScriptUserObjects[0]
-                Scope = 'Global'
-                Force = $true
-            }
-            New-Variable @VariableParams
-            $VariableParams = @{
-                Name  = "${VarPrefix}UserObjects"
-                Value = @($ScriptUserObject)
-                Scope = 'Global'
-                Force = $true
-            }
-            New-Variable @VariableParams
-            $VariableParams = @{
-                Name  = "${VarPrefix}UserEmail"
-                Value = $ScriptUserObject.UserPrincipalName
-                Scope = 'Global'
-                Force = $true
-            }
-            New-Variable @VariableParams
-            Write-Host @Blue "`nCreated `$${VarPrefix}UserObject, `$${VarPrefix}UserObjects, and `$${VarPrefix}UserEmail"
-        }
-        elseif (($ScriptUserObjects | Measure-Object).Count -gt 1) {
-            
-            # set objects
-            $VariableParams = @{
-                Name  = "${VarPrefix}UserObjects"
+                Name  = "IRT_${VarPrefix}UserObjects"
                 Value = @($ScriptUserObjects)
                 Scope = 'Global'
                 Force = $true
             }
             New-Variable @VariableParams
-            Write-Host @Blue "`nCreated `$${VarPrefix}UserObjects"
-            $ScriptUserObjects | Format-Table $DisplayProperties
+            Write-Host @Blue "`nCreated `$IRT_${VarPrefix}UserObjects"
+
+            if ( $ScriptUserObjects.Count -gt 1 ) {
+                $ScriptUserObjects | Format-Table $DisplayProperties
+            }
         }        
     }
 }

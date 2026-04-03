@@ -25,6 +25,8 @@ function Grant-MailboxFullAccess {
         # constants
         $Function = $MyInvocation.MyCommand.Name
 
+        $GrantAccessToList = [System.Collections.Generic.List[string]]::new()
+
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
         # $Cyan = @{ ForegroundColor = 'Cyan' }
@@ -50,7 +52,7 @@ function Grant-MailboxFullAccess {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -76,50 +78,62 @@ function Grant-MailboxFullAccess {
 
         #region CURRENT USER
 
-        if ( -not $GrantAccessTo ) {
-            $AccountsList = [System.Collections.Generic.List[string]]::new()
+        if ($GrantAccessTo) {
+            # normalise to list
+            [void]$GrantAccessToList.Add($GrantAccessTo)
+        }
+        else {
             try {
-                $Accounts = @((Get-ConnectionInformation ).UserPrincipalName)
+                $Accounts = @((Get-ConnectionInformation).UserPrincipalName)
             }
             catch {
                 $_
-                throw "Unable to retrieve connected Exchange account."
+                $ErrorParams = @{
+                    Category    = 'InvalidArgument'
+                    Message     = "${Function}: Unable to detect currently connected Exchange account. Specify with -GrantAccessTo."
+                    ErrorAction = 'Stop'
+                }
+                Write-Error @ErrorParams
             }
 
-            # remove empty entries
-            $Accounts = $Accounts | Where-Object {-not [string]::IsNullOrWhiteSpace($_)}
-
-            # add to list
-            foreach ($Object in $Accounts) { 
-                $AccountsList.Add($Object)
+            # if not empty, add to list
+            foreach ($a in $Accounts) {
+                if (-not [string]::IsNullOrWhiteSpace($a)) {
+                    [void]$GrantAccessToList.Add($a)
+                }
             }
         }
 
-        if ( $AccountsList.Count -lt 1 ) {
-            throw "Must specify -GrantAccessTo"
+        if ($GrantAccessToList.Count -lt 1) {
+            $ErrorParams = @{
+                Category    = 'InvalidArgument'
+                Message     = "${Function}: Unable to detect currently connected Exchange account. Specify with -GrantAccessTo."
+                ErrorAction = 'Stop'
+            }
+            Write-Error @ErrorParams
         }
-        elseif ( $AccountsList.Count -gt 1 ) {
+        elseif ($GrantAccessToList.Count -gt 1) {
 
             # remove duplicates
             $HashSet = [System.Collections.Generic.HashSet[string]]::new()
-            foreach ($Object in $AccountsList) { $HashSet.Add($Object) | Out-Null }
-            $AccountsList = @($HashSet)
+            foreach ($Object in $GrantAccessToList) {[void]$HashSet.Add($Object)}
+            $GrantAccessToList = @($HashSet)
 
             # if more than one option, have user choose
-            if ( $AccountsList.Count -gt 1 ) {
+            if ( $GrantAccessToList.Count -gt 1 ) {
                 $MenuParams = @{
                     Title = "Choose account to receive full access to mailbox."
-                    Options = $AccountsList
+                    Options = $GrantAccessToList
                     List = $true
                 }
                 $GrantAccessTo = Build-Menu @MenuParams
             }
             else {
-               $GrantAccessTo = $AccountsList | Select-Object -First 1
+               $GrantAccessTo = $GrantAccessToList | Select-Object -First 1
             }
         }
         else {
-            $GrantAccessTo = $AccountsList
+            $GrantAccessTo = $GrantAccessToList | Select-Object -First 1
         }
 
         #region USER LOOP
@@ -128,8 +142,7 @@ function Grant-MailboxFullAccess {
 
             $UserEmail = $ScriptUserObject.UserPrincipalName
 
-            if ( $Remove ) {
-
+            if ($Remove) {
                 # remove access
                 Write-Host @Blue "Removing access to ${UserEmail} from ${GrantAccessTo}" | Out-Host
                 $Params = @{
@@ -141,7 +154,6 @@ function Grant-MailboxFullAccess {
                 Remove-MailboxPermission @Params | Out-Null
             }
             else {
-
                 # add access
                 Write-Host @Blue "Adding access to ${UserEmail} to ${GrantAccessTo}" | Out-Host
                 $Params = @{

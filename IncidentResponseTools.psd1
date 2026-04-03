@@ -9,7 +9,7 @@
 @{
 
     # Script module or binary module file associated with this manifest.
-    # RootModule = ''
+    RootModule = 'IncidentResponseTools.psm1'
 
     # Version number of this module.
     ModuleVersion     = '2.5.1'
@@ -52,12 +52,10 @@
 
     # Modules that must be imported into the global environment prior to importing this module
     RequiredModules   = @(
-        'ExchangeOnlineManagement'
-        'ImportExcel'
+        'Microsoft.Graph.Authentication'
         'Microsoft.Graph.Beta.Identity.Signins'
         'Microsoft.Graph.Beta.Reports'
         'Microsoft.Graph.Applications'
-        'Microsoft.Graph.Authentication'
         'Microsoft.Graph.DirectoryObjects'
         'Microsoft.Graph.Groups'
         'Microsoft.Graph.Identity.DirectoryManagement'
@@ -65,7 +63,8 @@
         'Microsoft.Graph.Reports'
         'Microsoft.Graph.Users'
         'Microsoft.Graph.Users.Actions'
-        'MSAL.PS'
+        'ExchangeOnlineManagement'
+        'ImportExcel'
     )
 
     # Assemblies that must be loaded prior to importing this module
@@ -82,7 +81,7 @@
 
     # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
     NestedModules     = @(
-        'exchange\Get-ExchangeUAAppLogs.ps1'
+        # 'exchange\Get-ExchangeUAAppLogs.ps1'
         'exchange\Get-MailboxesUserHasFullAccessTo.ps1'
         'exchange\Get-IRTMessageTrace.ps1'
         'exchange\Get-IRTInboxRules.ps1'
@@ -98,6 +97,7 @@
         'exchange\Show-UALogs.ps1'
         'exchange\Get-UALogs.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryAddRemoveRole.ps1'
+        'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryLogin.ps1'
         'exchange\ual_parsing_functions\Resolve-AzureActiveDirectoryUpdateUser.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminInboxRule.ps1'
         'exchange\ual_parsing_functions\Resolve-ExchangeAdminSetConditionalAccessPolicy.ps1'
@@ -117,6 +117,7 @@
         'graph_applications\Save-ServicePrincipalData.ps1'
         'graph_applications\Show-Applications.ps1'
 
+        'graph_logs\Convert-TrustType.ps1'
         'graph_logs\ConvertTo-HumanErrorDescription.ps1'
         'graph_logs\Add-HumanReadableId.ps1'
         'graph_logs\Get-EntraAuditLogs.ps1'
@@ -157,20 +158,26 @@
         'modules\Build-Menu.ps1'
         'modules\Convert-DecimalToExcelColumn.ps1'
         'modules\Get-RandomPassword.ps1'
+        'modules\Initialize-Modules.ps1'
+        'modules\Open-Browser.ps1'
         'modules\Test-PythonPackage.ps1'
 
         'Compress-InvestigationFolders.ps1'
-        'Format-EventDateString.ps1'
-        'Get-ExchangeAccessToken.ps1'
+        'Connect-IncidentResponseTools.ps1'
+        'Get-IRTConnectionStatus.ps1'
+        'Disconnect-IncidentResponseTools.ps1'
+        'Connect-IRTGraph.ps1'
+        'Connect-IRTExchange.ps1'
+        'Connect-IRTTenant.ps1'
         'New-InvestigationDirectory.ps1'
         'Start-IncidentResponsePlaybook.ps1'
-        'Start-IncidentResponsePlaybookExToken.ps1'
+        'Start-IncidentResponsePlaybookOLD.ps1'
     )
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
     FunctionsToExport = @(
         ### exchange
-        'Get-ExchangeUAAppLogs'
+        # 'Get-ExchangeUAAppLogs'
         'Get-MailboxesUserHasFullAccessTo'
         'Get-NonInteractiveLogs'
         'Get-IRTMessageTrace'
@@ -230,13 +237,16 @@
 
         ### module root
         'Compress-InvestigationFolders'
-        'Format-EventDateString'
-        'Get-ExchangeAccessToken'
+        'Connect-IncidentResponseTools'
+        'Get-IRTConnectionStatus'
+        'Disconnect-IncidentResponseTools'
+        'Connect-IRTGraph'
+        'Connect-IRTExchange'
+        'Connect-IRTTenant'
+        'Open-IRTTenantsCSV'
         'New-InvestigationDirectory'
-        'Start-IncidentResponsePlaybookOLD'
         'Start-IncidentResponsePlaybook'
-        'Start-IncidentResponsePlaybookTEST'
-        'Start-IncidentResponsePlaybookExToken'
+        'Start-IncidentResponsePlaybookOLD'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -249,13 +259,12 @@
     AliasesToExport   = @(
 
         ### exchange
-        # Get-ExchangeUnifiedAuditLogs
+        # Get-UALogs
         'UALog'
         'UALogs'
         'GetUALog'
         'GetUALogs'
-        'GetUserUALog'
-        'GetUserUALogs'
+        'Get-UALog'
         # Get-IRTMessageTrace
         'MessageTrace'
         # Get-IRTInboxRules
@@ -272,6 +281,11 @@
         # Show-MailboxAccess
         'MailboxAccess'
         'ShowAccess'
+        'ShowFullAccess'
+
+        # Disconnect-IncidentResponseTools
+        'DisconnectIRT'
+        'Disconnect-IRT'
 
         ### graph
         # Find-GraphDirectoryObjects
@@ -350,11 +364,12 @@
         'UnlockUsers'
 
         ### module root
+        # Connect-IncidentResponseTools
+        'ConnectIRT'
+        'IRTConnect'
         'NewDir'
-        'PlayBoo'
         'PlayBook'
-        'PlaybookTEST'
-        # 'PlaybookNEW'
+        'PlayBookOLD' # FIXME remove once token workflow is thoroughly tested
     )
 
     # DSC resources to export from this module

@@ -19,14 +19,9 @@ function Get-GraphGlobalUserObjects {
 
     process {
 
-		# add userobject
-		if ( $Global:UserObject ) {
-			$ScriptUserObjects.Add( $Global:UserObject )
-		}
-
 		# add userobjects
-		if ( $Global:UserObjects ) {
-            $IterationList = @( $Global:UserObjects )  
+		if ( $Global:IRT_UserObjects ) {
+            $IterationList = @( $Global:IRT_UserObjects )  
 			foreach ( $i in $IterationList ) {
 				$ScriptUserObjects.Add( $i )
 			}
