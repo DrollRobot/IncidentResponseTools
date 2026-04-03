@@ -9,7 +9,7 @@
 @{
 
     # Script module or binary module file associated with this manifest.
-    # RootModule = 'IncidentResponseTools.psm1'
+    RootModule = 'IncidentResponseTools.psm1'
 
     # Version number of this module.
     ModuleVersion     = '2.5.1'
@@ -370,8 +370,6 @@
         'NewDir'
         'PlayBoo'
         'PlayBook'
-        'PlaybookTEST'
-        # 'PlaybookNEW'
     )
 
     # DSC resources to export from this module

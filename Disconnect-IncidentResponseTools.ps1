@@ -29,25 +29,25 @@ function Disconnect-IncidentResponseTools {
     process {
 
         # if no service switches specified, disconnect from both
-        $DisconnectAll = -not ( $Graph -or $Exchange )
+        $DisconnectAll = -not ($Graph -or $Exchange)
 
         $DisconnectGraph    = $DisconnectAll -or $Graph
         $DisconnectExchange = $DisconnectAll -or $Exchange
 
         # --- Graph ---
-        if ( $DisconnectGraph ) {
+        if ($DisconnectGraph) {
             $GraphCtx = Get-MgContext -ErrorAction SilentlyContinue
-            if ( $GraphCtx ) {
+            if ($GraphCtx) {
                 Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
                 Write-Host 'Disconnected from Microsoft Graph.' -ForegroundColor Yellow
             }
         }
 
         # --- Exchange ---
-        if ( $DisconnectExchange ) {
+        if ($DisconnectExchange) {
             $ExoConn = Get-ConnectionInformation -ErrorAction SilentlyContinue |
                 Where-Object { $_.State -eq 'Connected' }
-            if ( $ExoConn ) {
+            if ($ExoConn) {
                 Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
                 Write-Host 'Disconnected from Exchange Online.' -ForegroundColor Yellow
             }
@@ -59,8 +59,8 @@ function Disconnect-IncidentResponseTools {
         $ExoStillConnected   = [bool](Get-ConnectionInformation -ErrorAction SilentlyContinue |
             Where-Object { $_.State -eq 'Connected' })
 
-        if ( -not $GraphStillConnected -and -not $ExoStillConnected ) {
-            if ( $Global:IRT_OriginalPrompt ) {
+        if (-not $GraphStillConnected -and -not $ExoStillConnected) {
+            if ($Global:IRT_OriginalPrompt) {
                 $function:prompt = $Global:IRT_OriginalPrompt
             }
 

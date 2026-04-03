@@ -234,7 +234,7 @@ function Start-IncidentResponsePlaybookExToken {
                 }
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange,
+                    $Global:IRT_Session.Exchange,
                     $ScriptUserObjects
                 )
             }
@@ -258,7 +258,7 @@ function Start-IncidentResponsePlaybookExToken {
                 }
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange,
+                    $Global:IRT_Session.Exchange,
                     $ScriptUserObjects
                 )
             }
@@ -316,7 +316,7 @@ function Start-IncidentResponsePlaybookExToken {
                 }
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange,
+                    $Global:IRT_Session.Exchange,
                     $ScriptUserObjects
                 )
             }
@@ -343,7 +343,7 @@ function Start-IncidentResponsePlaybookExToken {
                 }
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange,
+                    $Global:IRT_Session.Exchange,
                     $ScriptUserObjects
                 )
             }
@@ -370,7 +370,7 @@ function Start-IncidentResponsePlaybookExToken {
                 }
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange,
+                    $Global:IRT_Session.Exchange,
                     $ScriptUserObjects
                 )
             }
@@ -409,7 +409,7 @@ function Start-IncidentResponsePlaybookExToken {
                 } 
                 Args  = @(
                     $WorkingPath,
-                    $Global:IRT_Exchange
+                    $Global:IRT_Session.Exchange
                 )
             }
         )

@@ -81,75 +81,103 @@ function Connect-IncidentResponseTools {
     process {
 
         # if no service switches specified, connect to both
-        $ConnectAll = -not ( $Graph -or $Exchange )
+        
+        $ConnectAll = -not ($Graph -or $Exchange)
 
         $ConnectGraph    = $ConnectAll -or $Graph
         $ConnectExchange = $ConnectAll -or $Exchange
 
         # validate UPN is provided when Exchange is requested
-        if ( $ConnectExchange -and -not $UserPrincipalName ) {
+        if ($ConnectExchange -and -not $UserPrincipalName) {
             throw 'UserPrincipalName is required when connecting to Exchange.'
         }
 
         # --- Graph ---
-        if ( $ConnectGraph ) {
+        if ($ConnectGraph) {
 
             $GraphParams = @{
                 TenantId = $TenantId
             }
 
-            if ( $GCCHigh )    { $GraphParams['GCCHigh']    = $true }
-            if ( $DeviceCode ) { $GraphParams['DeviceCode'] = $true }
+            if ($GCCHigh)          { $GraphParams['GCCHigh']            = $true }
+            if ($DeviceCode)       { $GraphParams['DeviceCode']         = $true }
+            if ($UserPrincipalName) { $GraphParams['UserPrincipalName'] = $UserPrincipalName }
 
             $GraphParams['Browser'] = $Browser
-            if ( $Private ) { $GraphParams['Private'] = $true }
+            if ($Private) { $GraphParams['Private'] = $true }
 
-            if ( $AdditionalScopes ) {
+            if ($AdditionalScopes) {
                 $GraphParams['AdditionalScopes'] = $AdditionalScopes
             }
 
-            Connect-IRTGraph @GraphParams
+            $GraphToken = Connect-IRTGraph @GraphParams
         }
 
         # --- Exchange Online ---
-        if ( $ConnectExchange ) {
+        if ($ConnectExchange) {
 
             $ExchangeParams = @{
                 TenantId          = $TenantId
                 UserPrincipalName = $UserPrincipalName
             }
 
-            if ( $GCCHigh )    { $ExchangeParams['GCCHigh']    = $true }
-            if ( $DeviceCode ) { $ExchangeParams['DeviceCode'] = $true }
+            if ($GCCHigh)    { $ExchangeParams['GCCHigh']    = $true }
+            if ($DeviceCode) { $ExchangeParams['DeviceCode'] = $true }
 
             $ExchangeParams['Browser'] = $Browser
-            if ( $Private ) { $ExchangeParams['Private'] = $true }
+            if ($Private) { $ExchangeParams['Private'] = $true }
 
-            Connect-IRTExchange @ExchangeParams
+            $ExchangeToken = Connect-IRTExchange @ExchangeParams
         }
 
+        # --- Build combined session global ---
+        if (-not $Global:IRT_Session) {
+            $Global:IRT_Session = [pscustomobject]@{
+                TenantId = $TenantId
+                Graph    = $null
+                Exchange = $null
+            }
+        }
+
+        if ($GraphToken)    { $Global:IRT_Session.Graph    = $GraphToken }
+        if ($ExchangeToken) { $Global:IRT_Session.Exchange = $ExchangeToken }
+
         # --- Update prompt to show connected services ---
-        if ( -not $Global:IRT_OriginalPrompt ) {
-            $Global:IRT_OriginalPrompt = $function:prompt
+        if (-not $Global:IRT_OriginalPrompt -or $Global:IRT_OriginalPrompt -isnot [scriptblock]) {
+            # Capture as a scriptblock so it's always callable regardless of whether
+            # the current prompt is a custom function or the built-in default.
+            $Global:IRT_OriginalPrompt = (Get-Command prompt -ErrorAction SilentlyContinue).ScriptBlock
+            if (-not $Global:IRT_OriginalPrompt) {
+                # Fallback: default PS prompt
+                $Global:IRT_OriginalPrompt = { "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) " }
+            }
         }
 
         function Global:prompt {
             $parts = @()
 
             $GraphCtx = Get-MgContext -ErrorAction SilentlyContinue
-            if ( $GraphCtx -and $GraphCtx.Account ) {
+            if ($GraphCtx -and $GraphCtx.Account) {
                 $graphDomain = ($GraphCtx.Account -split '@')[-1]
                 $parts += "Graph:$graphDomain"
             }
 
             $ExoConn = Get-ConnectionInformation -ErrorAction SilentlyContinue |
                 Where-Object { $_.State -eq 'Connected' } | Select-Object -First 1
-            if ( $ExoConn -and $ExoConn.UserPrincipalName ) {
+            if ($ExoConn -and $ExoConn.UserPrincipalName) {
                 $exoDomain = ($ExoConn.UserPrincipalName -split '@')[-1]
                 $parts += "Exchange:$exoDomain"
             }
 
-            if ( $parts.Count -gt 0 ) {
+            if ($Global:IRT_UserObjects) {
+                $UserEmails = New-Object System.Collections.Generic.List[string]
+                foreach ($UserEmail in $Global:IRT_UserObjects.UserPrincipalName) {
+                    $UserEmails.Add($UserEmail)
+                }
+                $parts += "Users:$($UserEmails -join ',')"
+            }
+
+            if ($parts.Count -gt 0) {
                 Write-Host "[IRT] $( $parts -join '; ' )" -NoNewline -ForegroundColor Cyan
                 Write-Host ' ' -NoNewline
             }

@@ -111,13 +111,13 @@ function Find-Users {
         if ( $ScriptUserObjects.Count -gt 0 ) {
 
             $VariableParams = @{
-                Name  = "${VarPrefix}UserObjects"
+                Name  = "IRT_${VarPrefix}UserObjects"
                 Value = @($ScriptUserObjects)
                 Scope = 'Global'
                 Force = $true
             }
             New-Variable @VariableParams
-            Write-Host @Blue "`nCreated `$${VarPrefix}UserObjects"
+            Write-Host @Blue "`nCreated `$IRT_${VarPrefix}UserObjects"
 
             if ( $ScriptUserObjects.Count -gt 1 ) {
                 $ScriptUserObjects | Format-Table $DisplayProperties

@@ -15,7 +15,7 @@ function Connect-IRTExchange {
     .PARAMETER DeviceCode
     Use device code authentication flow. An access token is acquired using
     the Microsoft.Identity.Client assembly (loaded by Microsoft.Graph.Authentication)
-    and stored in $Global:IRT_Exchange for reuse across runspaces.
+    and returned for storage by the caller.
 
     .PARAMETER AccessToken
     A pre-existing access token to use for connection. Intended for use within
@@ -53,17 +53,27 @@ function Connect-IRTExchange {
     process {
 
         # --- Exchange Online ---
+        # Check connection state up front so we can skip unnecessary token acquisition
+        # and avoid prompting the user when Exchange is already connected.
+        $ExistingConnection = Get-ConnectionInformation -ErrorAction SilentlyContinue |
+            Where-Object { $_.State -eq 'Connected' -and $_.TenantID -eq $TenantId }
+
         # Step 1: ensure we have a token for this tenant
         if ($AccessToken) {
-            # caller provided a token directly — store it and skip acquisition
-            $Global:IRT_Exchange = [pscustomobject]@{
+            # caller provided a token directly — use it and skip acquisition
+            $ExchangeToken = [pscustomobject]@{
                 Token             = $AccessToken
                 UserPrincipalName = $UserPrincipalName
                 TenantId          = $TenantId
             }
 
-        } elseif ( $Global:IRT_Exchange -and $Global:IRT_Exchange.TenantId -eq $TenantId ) {
-            Write-Host "Exchange token already exists for tenant $TenantId." -ForegroundColor Yellow
+        } elseif ( $Global:IRT_Session -and $Global:IRT_Session.Exchange -and $Global:IRT_Session.TenantId -eq $TenantId ) {
+            $ExchangeToken = $Global:IRT_Session.Exchange
+
+            if ( $ExistingConnection ) {
+                Write-Host "Already connected to Exchange Online for tenant $TenantId." -ForegroundColor Yellow
+                return $ExchangeToken
+            }
 
         } else {
             # Acquire a portable Exchange token via MSAL (interactive or device code)
@@ -170,27 +180,24 @@ namespace IRT {
                 throw 'Failed to acquire Exchange access token.'
             }
 
-            $Global:IRT_Exchange = [pscustomobject]@{
+            $ExchangeToken = [pscustomobject]@{
                 Token             = $Token
                 UserPrincipalName = $UserPrincipalName
                 TenantId          = $TenantId
             }
         }
 
-        # Step 2: check if already connected to this tenant; if not, connect
-        $ExistingConnection = Get-ConnectionInformation -ErrorAction SilentlyContinue |
-            Where-Object { $_.State -eq 'Connected' -and $_.TenantID -eq $TenantId }
-
+        # Step 2: connect only if not already connected to this tenant
         if ( $ExistingConnection ) {
             Write-Host "Already connected to Exchange Online for tenant $TenantId." -ForegroundColor Yellow
-            return
+            return $ExchangeToken
         }
 
         # Step 3: connect
-        if ( $Global:IRT_Exchange -and $Global:IRT_Exchange.TenantId -eq $TenantId ) {
+        if ( $ExchangeToken ) {
             $ConnectParams = @{
-                AccessToken       = $Global:IRT_Exchange.Token
-                UserPrincipalName = $Global:IRT_Exchange.UserPrincipalName
+                AccessToken       = $ExchangeToken.Token
+                UserPrincipalName = $ExchangeToken.UserPrincipalName
                 ShowBanner        = $false
             }
         } else {
@@ -205,5 +212,7 @@ namespace IRT {
         }
 
         Connect-ExchangeOnline @ConnectParams
+
+        return $ExchangeToken
     }
 }
