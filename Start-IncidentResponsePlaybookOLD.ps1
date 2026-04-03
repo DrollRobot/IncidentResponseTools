@@ -1,5 +1,6 @@
-New-Alias -Name 'PlaybookExToken' -Value 'Start-IncidentResponsePlaybookExToken' -Force
-function Start-IncidentResponsePlaybookExToken {
+New-Alias -Name 'PlaybookOLD' -Value 'Start-IncidentResponsePlaybookOLD' -Force
+
+function Start-IncidentResponsePlaybookOLD {
     <#
 	.SYNOPSIS
     Runs multiple functions to assist in investigating a user's activity.
@@ -7,7 +8,6 @@ function Start-IncidentResponsePlaybookExToken {
 	.NOTES
 	Version: 2.2.0
     2.2.0 - Added license report, added error handling to close runspaces when script exits.
-    2.1.0 - Added ability to run parallel exchange runspaces using exchange access token.
     2.0.0 - Added ability to run mulitple operations in parallel using runspaces.
 	#>
     [CmdletBinding()]
@@ -15,16 +15,13 @@ function Start-IncidentResponsePlaybookExToken {
         [Parameter( Position = 0 )]
         [Alias( 'UserObject' )]
         [psobject[]] $UserObjects,
-        
         [string] $Ticket,
         [switch] $NoFolder,
-        [int] $MaxRunspaces = 15,
+        [int] $Threads = 15,
         [switch] $Test
     )
 
     begin {
-
-        #region BEGIN
 
         if ($Test -or $Script:Test) {
             $Script:Test = $true
@@ -44,10 +41,6 @@ function Start-IncidentResponsePlaybookExToken {
             
             # if none found, exit
             if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                Write-Host @Red "${Function}: No user objects passed or found in global variables."
-                return
-            }
-            if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
                     Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
@@ -144,21 +137,6 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # Show-Mailbox
-            @{  Name   = 'Show-Mailbox'
-                Script = {
-                    param( 
-                        $WorkingPath,
-                        $RunspaceUserObjects
-                    )
-                    Set-Location -Path $WorkingPath
-                    Show-Mailbox -UserObjects $RunspaceUserObjects 
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $ScriptUserObjects
-                )
-            }
             # Show-GraphGeoBlockPolicy
             @{  Name   = 'Show-GraphGeoBlockPolicy'
                 Script = { 
@@ -213,56 +191,6 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # Get-IRTMessageTrace
-            @{  Name   = 'Get-IRTMessageTrace'
-                Script = { 
-                    param( 
-                        $WorkingPath,
-                        $Exchange,
-                        $RunspaceUserObjects
-                    )
-                    # set working path
-                    Set-Location -Path $WorkingPath
-                    # connect to exchange
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    Get-IRTMessageTrace -Days 90 -UserObjects $RunspaceUserObjects
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange,
-                    $ScriptUserObjects
-                )
-            }
-            # Get-IRTInboxRules
-            @{  Name   = 'Get-IRTInboxRules'
-                Script = { 
-                    param( 
-                        $WorkingPath,
-                        $Exchange,
-                        $RunspaceUserObjects
-                    )
-                    Set-Location -Path $WorkingPath
-                    Set-Location -Path $WorkingPath
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    Get-IRTInboxRules -UserObjects $RunspaceUserObjects
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange,
-                    $ScriptUserObjects
-                )
-            }
-
             # Get-EntraAuditLogs
             @{  Name   = 'Get-EntraAuditLogs'
                 Script = { 
@@ -293,87 +221,6 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # Get-UALogs
-            @{  Name   = 'Get-UALogs'
-                Script = {
-                    param( 
-                        $WorkingPath,
-                        $Exchange,
-                        $RunspaceUserObjects
-                    )
-                    Set-Location -Path $WorkingPath
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    $UAParams = @{
-                        UserObjects = $RunspaceUserObjects
-                        WaitOnMessageTrace = $true
-                    }
-                    Get-UALogs @UAParams
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange,
-                    $ScriptUserObjects
-                )
-            }
-            # Get-UALogs -RiskyOperations
-            @{  Name   = 'UALRiskyOperations'
-                Script = {
-                    param( 
-                        $WorkingPath,
-                        $Exchange,
-                        $RunspaceUserObjects
-                    )
-                    Set-Location -Path $WorkingPath
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    $UAParams = @{
-                        UserObjects = $RunspaceUserObjects
-                        RiskyOperations = $true
-                    }
-                    Get-UALogs @UAParams
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange,
-                    $ScriptUserObjects
-                )
-            }
-            # Get-UALogs -SignInLogs
-            @{  Name   = 'UALSignInLogs'
-                Script = {
-                    param( 
-                        $WorkingPath,
-                        $Exchange,
-                        $RunspaceUserObjects
-                    )
-                    Set-Location -Path $WorkingPath
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    $UAParams = @{
-                        UserObjects = $RunspaceUserObjects
-                        SignInLogs = $true
-                    }
-                    Get-UALogs @UAParams
-                }
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange,
-                    $ScriptUserObjects
-                )
-            }
             # Get-NonInteractiveLogs
             @{  Name   = 'Get-NonInteractiveLogs'
                 Script = {
@@ -389,29 +236,6 @@ function Start-IncidentResponsePlaybookExToken {
                     $ScriptUserObjects
                 )
             }
-            # Get-IRTMessageTrace -AllUsers
-            @{  Name   = 'Get-IRTMessageTrace -AllUsers'
-                Script = {
-                    param( 
-                        $WorkingPath,
-                        $Exchange
-                    )
-                    # set path
-                    Set-Location -Path $WorkingPath
-                    # connect to exchange
-                    $ConnectParams = @{
-                        AccessToken = $Exchange.Token
-                        UserPrincipalName = $Exchange.UserPrincipalName
-                        ShowBanner = $false
-                    }
-                    Connect-ExchangeOnline @ConnectParams
-                    Get-IRTMessageTrace -AllUsers -Days 2
-                } 
-                Args  = @(
-                    $WorkingPath,
-                    $Global:IRT_Session.Exchange
-                )
-            }
         )
 
         try {
@@ -421,15 +245,15 @@ function Start-IncidentResponsePlaybookExToken {
 
             ### build a runspace pool
             $InitialSessionState = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-                $InitialSessionState.ImportPSModule(
-                    'ExchangeOnlineManagement',
-                    'IncidentResponseTools',
-                    'Microsoft.Graph.Authentication',
-                    'Microsoft.Graph.Applications',
-                    'Microsoft.Graph.Beta.Reports',
-                    'Microsoft.Graph.Users'
-                )
-            $Global:IRT_Playbook_RunspacePool = [RunspaceFactory]::CreateRunspacePool(1, $MaxRunspaces, $InitialSessionState, $Host)
+            $InitialSessionState.ImportPSModule(
+                # 'ExchangeOnlineManagement', # not needed unless running exhchange commands in runspaces.
+                'IncidentResponseTools',
+                'Microsoft.Graph.Authentication',
+                'Microsoft.Graph.Applications',
+                'Microsoft.Graph.Beta.Reports',
+                'Microsoft.Graph.Users'
+            )
+            $Global:IRT_Playbook_RunspacePool = [RunspaceFactory]::CreateRunspacePool(1, $Threads, $InitialSessionState, $Host)
             $Global:IRT_Playbook_RunspacePool.Open()
 
             ### queue tasks
@@ -451,6 +275,48 @@ function Start-IncidentResponsePlaybookExToken {
                     Completed  = $false
                 }
             }
+            ### exchange functions
+            # show mailbox properties
+            try {
+                Show-Mailbox -UserObjects $ScriptUserObjects
+            } 
+            catch { Write-Warning "Show-Mailbox error: $_" }
+
+            # download email rules
+            try {
+                Get-IRTInboxRules -UserObjects $ScriptUserObjects
+            }
+            catch { Write-Warning "Get-IRTInboxRules error: $_" }
+
+            # download maximum available user message trace
+            try {
+                Get-IRTMessageTrace -Days 90 -UserObjects $ScriptUserObjects
+            }
+            catch { Write-Warning "Get-IRTMessageTrace error: $_" }
+
+            # download user UAL
+            try {
+                Get-UALogs -UserObjects $ScriptUserObjects -WaitOnMessageTrace:$true -Days 1
+            }
+            catch { Write-Warning "Get-UALogs error: $_" }
+
+            # download high risk UAL
+            try {
+                Get-UALogs -UserObjects $ScriptUserObjects -WaitOnMessageTrace:$true -RiskyOperations
+            }
+            catch { Write-Warning "Get-UALogs (risky) error: $_" }
+
+            # download 180 days of sign ins
+            try {
+                Get-UALogs -UserObjects $ScriptUserObjects -WaitOnMessageTrace:$true -SignInLogs
+            }
+            catch { Write-Warning "Get-UALogs (sign ins) error: $_" }
+
+            # # # download 2 day message trace for all users
+            try {
+                Get-IRTMessageTrace -AllUsers -Days 2
+            }
+            catch { Write-Warning "Get-IRTMessageTrace (all users) error: $_" }
 
             ### wait for completion, collect errors
             while ($Global:IRT_Playbook_JobList.Completed -contains $false) {
@@ -477,7 +343,7 @@ function Start-IncidentResponsePlaybookExToken {
                     }
                 }
 
-                $TotalJobs      = $Global:IRT_Playbook_JobList.Count
+                $TotalJobs     = $Global:IRT_Playbook_JobList.Count
                 $CompletedCount = ($Global:IRT_Playbook_JobList | Where-Object { $_.Completed }).Count
                 $RemainingNames = $Global:IRT_Playbook_JobList | Where-Object { -not $_.Completed } | Select-Object -ExpandProperty Name
                 $PercentComplete = [int](($CompletedCount / $TotalJobs) * 100)

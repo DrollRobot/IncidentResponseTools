@@ -164,13 +164,14 @@
 
         'Compress-InvestigationFolders.ps1'
         'Connect-IncidentResponseTools.ps1'
+        'Get-IRTConnectionStatus.ps1'
         'Disconnect-IncidentResponseTools.ps1'
         'Connect-IRTGraph.ps1'
         'Connect-IRTExchange.ps1'
         'Connect-IRTTenant.ps1'
         'New-InvestigationDirectory.ps1'
         'Start-IncidentResponsePlaybook.ps1'
-        'Start-IncidentResponsePlaybookExToken.ps1'
+        'Start-IncidentResponsePlaybookOLD.ps1'
     )
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
@@ -237,16 +238,15 @@
         ### module root
         'Compress-InvestigationFolders'
         'Connect-IncidentResponseTools'
+        'Get-IRTConnectionStatus'
         'Disconnect-IncidentResponseTools'
         'Connect-IRTGraph'
         'Connect-IRTExchange'
         'Connect-IRTTenant'
         'Open-IRTTenantsCSV'
         'New-InvestigationDirectory'
-        'Start-IncidentResponsePlaybookOLD'
         'Start-IncidentResponsePlaybook'
-        'Start-IncidentResponsePlaybookTEST'
-        'Start-IncidentResponsePlaybookExToken'
+        'Start-IncidentResponsePlaybookOLD'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -365,11 +365,11 @@
 
         ### module root
         # Connect-IncidentResponseTools
-        # 'Connect'
         'ConnectIRT'
+        'IRTConnect'
         'NewDir'
-        'PlayBoo'
         'PlayBook'
+        'PlayBookOLD' # FIXME remove once token workflow is thoroughly tested
     )
 
     # DSC resources to export from this module

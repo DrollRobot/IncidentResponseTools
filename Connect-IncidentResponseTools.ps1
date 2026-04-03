@@ -1,5 +1,5 @@
-# New-Alias -Name 'Connect' -Value 'Connect-IncidentResponseTools' -Force
 New-Alias -Name 'ConnectIRT' -Value 'Connect-IncidentResponseTools' -Force
+New-Alias -Name 'IRTConnect' -Value 'Connect-IncidentResponseTools' -Force
 New-Alias -Name 'Connect-IRT' -Value 'Connect-IncidentResponseTools' -Force
 
 function Connect-IncidentResponseTools {
@@ -142,47 +142,42 @@ function Connect-IncidentResponseTools {
         if ($GraphToken)    { $Global:IRT_Session.Graph    = $GraphToken }
         if ($ExchangeToken) { $Global:IRT_Session.Exchange = $ExchangeToken }
 
+        # display connection status
+        Get-IRTConnectionStatus
+
         # --- Update prompt to show connected services ---
-        if (-not $Global:IRT_OriginalPrompt -or $Global:IRT_OriginalPrompt -isnot [scriptblock]) {
-            # Capture as a scriptblock so it's always callable regardless of whether
-            # the current prompt is a custom function or the built-in default.
-            $Global:IRT_OriginalPrompt = (Get-Command prompt -ErrorAction SilentlyContinue).ScriptBlock
-            if (-not $Global:IRT_OriginalPrompt) {
-                # Fallback: default PS prompt
-                $Global:IRT_OriginalPrompt = { "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) " }
-            }
-        }
-
-        function Global:prompt {
-            $parts = @()
-
-            $GraphCtx = Get-MgContext -ErrorAction SilentlyContinue
-            if ($GraphCtx -and $GraphCtx.Account) {
-                $graphDomain = ($GraphCtx.Account -split '@')[-1]
-                $parts += "Graph:$graphDomain"
-            }
-
-            $ExoConn = Get-ConnectionInformation -ErrorAction SilentlyContinue |
-                Where-Object { $_.State -eq 'Connected' } | Select-Object -First 1
-            if ($ExoConn -and $ExoConn.UserPrincipalName) {
-                $exoDomain = ($ExoConn.UserPrincipalName -split '@')[-1]
-                $parts += "Exchange:$exoDomain"
-            }
-
-            if ($Global:IRT_UserObjects) {
-                $UserEmails = New-Object System.Collections.Generic.List[string]
-                foreach ($UserEmail in $Global:IRT_UserObjects.UserPrincipalName) {
-                    $UserEmails.Add($UserEmail)
+        # Skipped in VS Code — the integrated terminal has prompt issues with -Force reimports and breakpoints.
+        if ($env:TERM_PROGRAM -ne 'vscode') {
+            if (-not $Global:IRT_OriginalPrompt -or $Global:IRT_OriginalPrompt -isnot [scriptblock]) {
+                $Global:IRT_OriginalPrompt = (Get-Command prompt -ErrorAction SilentlyContinue).ScriptBlock
+                if (-not $Global:IRT_OriginalPrompt) {
+                    $Global:IRT_OriginalPrompt = { "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) " }
                 }
-                $parts += "Users:$($UserEmails -join ',')"
             }
 
-            if ($parts.Count -gt 0) {
-                Write-Host "[IRT] $( $parts -join '; ' )" -NoNewline -ForegroundColor Cyan
+            function Global:prompt {
+                $GraphCtx = Get-MgContext -ErrorAction SilentlyContinue
+                $graphDomain = if ($GraphCtx -and $GraphCtx.Account) { ($GraphCtx.Account -split '@')[-1] } else { 'none' }
+
+                $ExoConn = Get-ConnectionInformation -ErrorAction SilentlyContinue |
+                    Where-Object { $_.State -eq 'Connected' } | Select-Object -First 1
+                $exoDomain = if ($ExoConn -and $ExoConn.UserPrincipalName) { ($ExoConn.UserPrincipalName -split '@')[-1] } else { 'none' }
+
+                Write-Host '[IRT] ' -NoNewline -ForegroundColor Cyan
+                Write-Host 'Graph:' -NoNewline -ForegroundColor Cyan
+                Write-Host $graphDomain -NoNewline
+                Write-Host 'Exchange:' -NoNewline -ForegroundColor Cyan
+                Write-Host $exoDomain -NoNewline
+
+                if ($Global:IRT_UserObjects) {
+                    $userList = ($Global:IRT_UserObjects.UserPrincipalName) -join ','
+                    Write-Host 'Users:' -NoNewline -ForegroundColor Cyan
+                    Write-Host $userList -NoNewline
+                }
+
                 Write-Host ' ' -NoNewline
+                & $Global:IRT_OriginalPrompt
             }
-
-            & $Global:IRT_OriginalPrompt
         }
     }
 }

@@ -33,7 +33,9 @@ function Connect-IRTTenant {
     Override the AdminEmail value from the tenant CSV.
 
     .PARAMETER DeviceCode
-    Force device code authentication, overriding the DeviceAuthAllowed setting in the tenant CSV.
+    Use device code authentication. Requires the tenant's DeviceAuthAllowed column to be set to 'yes'.
+    Interactive authentication is used by default. An error is thrown if device code is requested
+    but the tenant does not allow it.
 
     .PARAMETER Browser
     Browser to use for device code login and URL opening. Valid values: msedge, chrome, firefox, brave, default.
@@ -61,7 +63,7 @@ function Connect-IRTTenant {
         [Parameter( Mandatory, Position = 0 )]
         [string] $Alias,
 
-        [string] $TenantFile = ( Join-Path $env:APPDATA 'IncidentResponseTools\tenants.csv' ),
+        [string] $TenantFile = (Join-Path $env:APPDATA 'IncidentResponseTools\tenants.csv'),
 
         [switch] $Graph,
         [switch] $Exchange,
@@ -78,7 +80,7 @@ function Connect-IRTTenant {
     process {
 
         # validate tenant file exists
-        if ( -not ( Test-Path $TenantFile ) ) {
+        if (-not ( Test-Path $TenantFile )) {
 
             $Message  = "Tenant file not found: ${TenantFile}`n"
             $Message += "Run Open-IRTTenantsCSV to create it and edit with your tenant information."
@@ -90,64 +92,65 @@ function Connect-IRTTenant {
         $Tenants = Import-Csv -Path $TenantFile
         $MatchedTenants = @()
 
-        foreach ( $Tenant in $Tenants ) {
+        foreach ($Tenant in $Tenants) {
 
-            if ( $Alias -match "^($( $Tenant.Aliases ))$" ) {
+            if ($Alias -match "^($($Tenant.Aliases))$") {
                 $MatchedTenants += $Tenant
             }
         }
-        if ( $MatchedTenants.Count -eq 0 ) {
+        if ($MatchedTenants.Count -eq 0) {
 
-            $AvailableNames = ( $Tenants | ForEach-Object { $_.TenantName } ) -join ', '
+            $AvailableNames = ($Tenants | ForEach-Object {$_.TenantName}) -join ', '
             throw "No tenant matched alias '${Alias}'. Available tenants: ${AvailableNames}"
         }
-        if ( $MatchedTenants.Count -gt 1 ) {
+        if ($MatchedTenants.Count -gt 1) {
 
-            $MatchedNames = ( $MatchedTenants | ForEach-Object { $_.TenantName } ) -join ', '
+            $MatchedNames = ($MatchedTenants | ForEach-Object {$_.TenantName}) -join ', '
             throw "Multiple tenants matched alias '${Alias}': ${MatchedNames}. Refine your alias patterns to avoid overlap."
         }
 
         $MatchedTenant = $MatchedTenants[0]
 
-        Write-Host "Matched tenant: $( $MatchedTenant.TenantName )" -ForegroundColor Cyan
+        Write-Host "Matched tenant: $($MatchedTenant.TenantName)" -ForegroundColor Cyan
 
         # build connection parameters
         $ConnectParams = @{
             TenantId = $MatchedTenant.TenantId
         }
 
-        if ( $UserPrincipalName ) {
+        if ($UserPrincipalName) {
             $ConnectParams['UserPrincipalName'] = $UserPrincipalName
-        } elseif ( $MatchedTenant.AdminEmail ) {
+        } elseif ($MatchedTenant.AdminEmail) {
             $ConnectParams['UserPrincipalName'] = $MatchedTenant.AdminEmail
         }
 
-        if ( $MatchedTenant.GCCHigh -imatch 'yes|^y$' ) {
+        if ($MatchedTenant.GCCHigh -imatch 'yes|^y$') {
             $ConnectParams['GCCHigh'] = $true
         }
 
-        if ( $null -ne $DeviceCode ) {
+        if ($null -ne $DeviceCode) {
+            if ($DeviceCode -eq $true -and $MatchedTenant.DeviceAuthAllowed -notmatch 'yes|^y$') {
+                throw "Device code authentication is not allowed for tenant '$($MatchedTenant.TenantName)'. Set DeviceAuthAllowed to 'yes' in the tenants CSV to permit it."
+            }
             $ConnectParams['DeviceCode'] = $DeviceCode
-        } elseif ( $MatchedTenant.DeviceAuthAllowed -imatch 'yes|^y$' ) {
-            $ConnectParams['DeviceCode'] = $true
         }
 
-        if ( $Graph )    { $ConnectParams['Graph']    = $true }
-        if ( $Exchange ) { $ConnectParams['Exchange'] = $true }
+        if ($Graph)    { $ConnectParams['Graph']    = $true }
+        if ($Exchange) { $ConnectParams['Exchange'] = $true }
 
-        if ( $AdditionalScopes ) {
+        if ($AdditionalScopes) {
             $ConnectParams['AdditionalScopes'] = $AdditionalScopes
         }
 
         $ConnectParams['Browser'] = $Browser
-        if ( $Private ) { $ConnectParams['Private'] = $true }
+        if ($Private) { $ConnectParams['Private'] = $true }
 
         # open configured URLs
-        if ( $MatchedTenant.URLsToOpen ) {
+        if ($MatchedTenant.URLsToOpen) {
             $URLs = $MatchedTenant.URLsToOpen -split ';'
-            foreach ( $URL in $URLs ) {
+            foreach ($URL in $URLs) {
                 $URL = $URL.Trim()
-                if ( $URL ) {
+                if ($URL) {
                     Open-Browser -Browser $Browser -Url $URL -Private:$Private
                 }
             }
@@ -171,17 +174,17 @@ function Open-IRTTenantsCSV {
     #>
     [CmdletBinding()]
     param (
-        [string] $TenantFile = ( Join-Path $env:APPDATA 'IncidentResponseTools\tenants.csv' )
+        [string] $TenantFile = (Join-Path $env:APPDATA 'IncidentResponseTools\tenants.csv')
     )
 
     process {
 
-        if ( -not ( Test-Path $TenantFile ) ) {
+        if (-not ( Test-Path $TenantFile )) {
 
             $ConfigDir    = Split-Path $TenantFile
             $TemplateFile = Join-Path $PSScriptRoot 'tenants_TEMPLATE.csv'
 
-            if ( -not ( Test-Path $ConfigDir ) ) {
+            if (-not (Test-Path $ConfigDir)) {
                 New-Item -ItemType Directory -Path $ConfigDir -Force | Out-Null
             }
 
