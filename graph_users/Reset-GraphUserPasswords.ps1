@@ -7,7 +7,8 @@ function Reset-GraphUserPasswords {
 	Resets Graph user password.	
 	
 	.NOTES
-	Version: 1.0.0
+	Version: 1.0.1
+    1.0.1 - Updated to output password in safe way. Fixed bug preventing password reset. Updated variable names.
 	#>
     [CmdletBinding( DefaultParameterSetName = 'RandomCharacters' )]
     param(
@@ -35,15 +36,15 @@ function Reset-GraphUserPasswords {
         if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
 
             # get from global variables
-            $ScriptUserObjects = Get-GraphGlobalUserObjects
+            $LoopObjects = Get-GraphGlobalUserObjects
         
             # if none found, exit
-            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+            if ( -not $LoopObjects -or $LoopObjects.Count -eq 0 ) {
                 throw "No user objects passed or found in global variables."
             }
         }
         else {
-            $ScriptUserObjects = $UserObjects
+            $LoopObjects = $UserObjects
         }
 
         # variables
@@ -74,17 +75,18 @@ function Reset-GraphUserPasswords {
 
     process {
 
-        foreach ( $ScriptUserObject in $ScriptUserObjects ) {
+        foreach ( $LoopObject in $LoopObjects ) {
 
             switch ( $PSCmdlet.ParameterSetName ) {
                 'Custom' { 
-                    $Password = Read-Host -Prompt "Enter new password"
+                    $Password = Read-Host -Prompt "`nEnter new password"
                 }
                 'RandomCharacters' {
-                    $UserEmail = $ScriptUserObject.UserPrincipalName
+                    $UserEmail = $LoopObject.UserPrincipalName
                     $Password = Get-RandomPassword 30
+                    Write-Host @Green "`n${UserEmail} new password:"
                     # Console WriteLine prevents password from bring recorded in transcripts
-                    [Console]::WriteLine("${UserEmail} new password:`n${Password}")
+                    [Console]::WriteLine($Password)
                 }
             }
 
@@ -94,11 +96,11 @@ function Reset-GraphUserPasswords {
                 ForceChangePasswordNextSignIn = $false
                 ForceChangePasswordNextSignInWithMfa = $false
             }
-            Update-MgUser -UserId $UserObject.Id -PasswordProfile $PasswordProfile
+            Update-MgUser -UserId $LoopObject.Id -PasswordProfile $PasswordProfile
 
             # get new user object
             Write-Host @Blue "`nGetting updated user information."
-            $FullUserObject = Get-MgUser -UserId $ScriptUserObject.Id -Property $GetProperties
+            $FullUserObject = Get-MgUser -UserId $LoopObject.Id -Property $GetProperties
             try {
                 $FullUserObject.LastPasswordChangeDateTime = $FullUserObject.LastPasswordChangeDateTime.ToLocalTime()
             }

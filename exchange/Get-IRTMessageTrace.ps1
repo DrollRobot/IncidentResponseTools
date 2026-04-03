@@ -52,7 +52,7 @@ function Get-IRTMessageTrace {
         $FileNamePrefix = 'MessageTrace'
 
         # colors
-        $Blue = @{ForegroundColor = 'Blue'}
+        $Blue = @{ForegroundColor = 'Blue' }
         # $Green = @{ForegroundColor = 'Green'}
         # $Magenta = @{ForegroundColor = 'Magenta'}
         # $Red = @{ForegroundColor = 'Red'}
@@ -75,7 +75,7 @@ function Get-IRTMessageTrace {
                     if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                         $ErrorParams = @{
                             Category    = 'InvalidArgument'
-                            Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                            Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                             ErrorAction = 'Stop'
                         }
                         Write-Error @ErrorParams
@@ -201,18 +201,18 @@ function Get-IRTMessageTrace {
         catch {
             # if there was an error, revert to V1
             $WarningParams = @{
-                Message     = "Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Running Get-MessageTrace instead."
+                Message = "Get-MessageTraceV2 command not available in this tenant or ExchangeOnlineManagement version. Running Get-MessageTrace instead."
             }
             Write-Warning @WarningParams
 
             $V1 = $true
 
             # change date ranges to 10 days max
-            if ($DateRangeType = 'Absolute') {
+            if ($DateRangeType -eq 'Absolute') {
                 $NowUtc = (Get-Date).ToUniversalTime()
                 if ($StartDateUtc -lt $NowUtc.AddDays(-10)) {
                     $WarningParams = @{
-                        Message     = "-StartDate is more than 10 days ago. Changing to 10 days ago."
+                        Message = "-StartDate is more than 10 days ago. Changing to 10 days ago."
                     }
                     Write-Warning @WarningParams
                     $StartDateUtc = $NowUtc.AddDays(-10)
@@ -225,14 +225,17 @@ function Get-IRTMessageTrace {
                     }
                     Write-Error @ErrorParams 
                 }
+                # recalculate $Days to match the adjusted date range
+                $Days = [Int]([Math]::Ceiling(($EndDateUtc - $StartDateUtc).TotalDays))
             }
             else {
                 if ($Days -gt 10) {
                     $WarningParams = @{
-                        Message     = "Get-MessageTrace can only search back 10 days. Changing -Days to 10."
+                        Message = "Get-MessageTrace can only search back 10 days. Changing -Days to 10."
                     }
                     Write-Warning @WarningParams
                     $Days = 10
+                    $StartDateUtc = (Get-Date).AddDays(-10).ToUniversalTime()
                 }
             }
         }
@@ -259,13 +262,20 @@ function Get-IRTMessageTrace {
                 try {
                     $Params = @{
                         UserPrincipalName = $ScriptUserObject.UserPrincipalName
-                        ErrorAction = 'Stop'
+                        ErrorAction       = 'Stop'
                     }
                     $Mailbox = Get-EXOMailbox @Params
                 }
                 catch {}
                 if (-not $Mailbox) {
                     Write-Host @Red "${Function}: $($ScriptUserObject.UserPrincipalName) does not have a mailbox. Exiting"
+                    $VariableParams = @{
+                        Name  = "IRT_MessageTraceTable_${UserName}"
+                        Value = $Null
+                        Scope = 'Global'
+                        Force = $True
+                    }
+                    New-Variable @VariableParams
                     return
                 }
 
@@ -282,7 +292,7 @@ function Get-IRTMessageTrace {
                 $EmailPattern = "\b[a-zA-Z0-9\._%+-]+@([a-zA-Z0-9.-]+\.)[a-zA-Z]{2,6}\b"
                 foreach ($p in $ScriptUserObject.ProxyAddresses) {
                     $e = $p | Select-String -Pattern $EmailPattern -AllMatches |
-                        ForEach-Object { $_.Matches.Value }
+                    ForEach-Object { $_.Matches.Value }
                     if ($e) {
                         [void]$LoopUserEmails.Add($e)
                     }
@@ -300,15 +310,15 @@ function Get-IRTMessageTrace {
                 Write-Host @Blue "Getting message trace records for all users."
                 [System.Collections.Generic.List[psobject]]$AllMessages = if ($V1) {
                     $Params = @{
-                        StartDate = $StartDateUtc
-                        EndDate = $EndDateUtc
+                        StartDate   = $StartDateUtc
+                        EndDate     = $EndDateUtc
                         ResultLimit = $ResultLimit
                     }
                     Request-IRTMessageTraceV1 @Params
                 }
                 else {
                     $Params = @{
-                        Days = $Days #FIXME update to use start/end dates instead of days
+                        Days        = $Days #FIXME update to use start/end dates instead of days
                         ResultLimit = $ResultLimit
                     }
                     Request-IRTMessageTrace @Params
@@ -324,50 +334,57 @@ function Get-IRTMessageTrace {
                     $Messages = if ($V1) {
                         $Params = @{
                             SenderAddress = $UserEmail
-                            StartDate = $StartDateUtc
-                            EndDate = $EndDateUtc
-                            ResultLimit = $ResultLimit
+                            StartDate     = $StartDateUtc
+                            EndDate       = $EndDateUtc
+                            ResultLimit   = $ResultLimit
                         }
                         Request-IRTMessageTraceV1 @Params
                     }
                     else {
                         $Params = @{
                             SenderAddress = $UserEmail
-                            Days = $Days #FIXME update to use start/end dates instead of days
-                            ResultLimit = $ResultLimit
+                            Days          = $Days #FIXME update to use start/end dates instead of days
+                            ResultLimit   = $ResultLimit
                         }
                         Request-IRTMessageTrace @Params
                     }
                     if (($Messages | Measure-Object).Count -gt 0) {
-                        $ListOfLists.Add($Messages)
+                        $ListOfLists.Add([System.Collections.Generic.List[psobject]]@($Messages))
                     }
                     # get recipient records
                     Write-Host @Blue "Requesting message trace records with recipient: ${UserEmail}"
                     $Messages = if ($V1) {
                         $Params = @{
                             RecipientAddress = $UserEmail
-                            StartDate = $StartDateUtc
-                            EndDate = $EndDateUtc
-                            ResultLimit = $ResultLimit
+                            StartDate        = $StartDateUtc
+                            EndDate          = $EndDateUtc
+                            ResultLimit      = $ResultLimit
                         }
                         Request-IRTMessageTraceV1 @Params
                     }
                     else {
                         $Params = @{
                             RecipientAddress = $UserEmail
-                            Days = $Days #FIXME update to use start/end dates instead of days
-                            ResultLimit = $ResultLimit
+                            Days             = $Days #FIXME update to use start/end dates instead of days
+                            ResultLimit      = $ResultLimit
                         }
                         Request-IRTMessageTrace @Params
                     }
                     if (($Messages | Measure-Object).Count -gt 0) {
-                        $ListOfLists.Add($Messages)
+                        $ListOfLists.Add([System.Collections.Generic.List[psobject]]@($Messages))
                     }
                 }
 
                 if ($ListOfLists.Count -eq 0) {
                     # exit if no messages returned
                     Write-Host @Red "0 total messages retrieved. Exiting."
+                    $VariableParams = @{
+                        Name  = "IRT_MessageTraceTable_${UserName}"
+                        Value = $Null
+                        Scope = 'Global'
+                        Force = $True
+                    }
+                    New-Variable @VariableParams
                     return
                 }
                 elseif ($ListOfLists.Count -eq 1) {
@@ -386,7 +403,14 @@ function Get-IRTMessageTrace {
 
             # exit if no messages found
             if (($AllMessages | Measure-Object).Count -eq 0) {
-                Write-Host @Red "${Function}: No messages found. Exiting"
+                Write-Host @Red "${Function}: No messages found. Exiting."
+                $VariableParams = @{
+                    Name  = "IRT_MessageTraceTable_${UserName}"
+                    Value = $Null
+                    Scope = 'Global'
+                    Force = $True
+                }
+                New-Variable @VariableParams
                 return
             }
 
@@ -397,14 +421,14 @@ function Get-IRTMessageTrace {
             $EndDate = Get-Date
             $AllMessages.Insert(0,
                 [pscustomobject]@{
-                    Metadata = $true
-                    UserObject = $ScriptUserObject
-                    UserEmails = $LoopUserEmails
-                    UserName = $UserName
-                    StartDate = $StartDate
-                    EndDate = $EndDate
-                    Days = $Days
-                    DomainName = $DomainName
+                    Metadata       = $true
+                    UserObject     = $ScriptUserObject
+                    UserEmails     = $LoopUserEmails
+                    UserName       = $UserName
+                    StartDate      = $StartDate
+                    EndDate        = $EndDate
+                    Days           = $Days
+                    DomainName     = $DomainName
                     FileNamePrefix = $FileNamePrefix
                 }
             )
@@ -428,7 +452,7 @@ function Get-IRTMessageTrace {
                     $VariableName = "IRT_MessageTraceTable_${UserName}"
                     Write-Host @Blue "Exporting message trace to `$Global:${VariableName}"
                     $VariableParams = @{
-                        Name = $VariableName
+                        Name  = $VariableName
                         Value = $Table
                         Scope = 'Global'
                         Force = $True

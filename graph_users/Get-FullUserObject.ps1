@@ -10,7 +10,7 @@ function Get-FullUserObject {
     #>
     [CmdletBinding(DefaultParameterSetName='ByObject')]
     param(
-        # pipe full user objects (e.g., from get-mguser)
+        # pipe full user objects
         [Parameter(Mandatory, ValueFromPipeline, ParameterSetName='ByObject')]
         [ValidateNotNull()]
         [Microsoft.Graph.PowerShell.Models.MicrosoftGraphUser] $UserObject,
@@ -26,7 +26,9 @@ function Get-FullUserObject {
     )
 
     begin {
-        # properties you can $select directly on /users
+        $ScriptUserObject = $UserObject
+
+        # properties you can safely query on all users
         $SelectProps = @(
             'id','userPrincipalName','displayName','accountEnabled',
             'ageGroup','businessPhones','city','companyName','consentProvidedForMinor',
@@ -46,7 +48,7 @@ function Get-FullUserObject {
             'usageLocation','userType','signInActivity'
         )
 
-        # optional properties that can error or be null depending on licensing/mailbox/etc.
+        # properties that may error depending on licensing/mailbox/etc.
         $OptionalProps = @(
             'aboutMe','birthday','deviceEnrollmentLimit','hireDate','interests',
             'mailboxSettings','mailFolders','mySite','pastProjects','preferredName',
@@ -58,15 +60,15 @@ function Get-FullUserObject {
 
         # if object is already full object, and -NoRefresh, don't query.
         if ($NoRefresh -and $PSCmdlet.ParameterSetName -eq 'ByObject' -and
-            $UserObject.PSObject.Properties['AllProperties'] -and $UserObject.AllProperties) {
-            Write-Output $UserObject
+            $ScriptUserObject.PSObject.Properties['AllProperties'] -and $ScriptUserObject.AllProperties) {
+            Write-Output $ScriptUserObject
             return
         }
 
         # resolve the identifier for this pipeline item
         switch ($PSCmdlet.ParameterSetName) {
             'ById'     { $ResolvedId = $UserId }
-            'ByObject' { $ResolvedId = $UserObject.Id }
+            'ByObject' { $ResolvedId = $ScriptUserObject.Id }
             default    { $ResolvedId = $null }
         }
 
@@ -87,8 +89,8 @@ function Get-FullUserObject {
         }
         catch {
             Write-Error "Get-MgUser failed for '$ResolvedId': $($_.Exception.Message)"
-            if ($PSCmdlet.ParameterSetName -eq 'ByObject' -and $UserObject) {
-                Write-Output $UserObject
+            if ($PSCmdlet.ParameterSetName -eq 'ByObject' -and $ScriptUserObject) {
+                Write-Output $ScriptUserObject
             }
             return
         }

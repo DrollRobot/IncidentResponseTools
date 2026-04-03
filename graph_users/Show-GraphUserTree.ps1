@@ -47,14 +47,16 @@ function Show-GraphUserTree {
             'AdditionalProperties',
             'LicenseAssignmentStates'
         )
+
+        $ScriptUserObjects = $UserObjects
     }
 
     process {
-        foreach ($UserObject in $UserObjects) {
-            if ($null -eq $UserObject) { continue }
+        foreach ($ScriptUserObject in $ScriptUserObjects) {
+            if ($null -eq $ScriptUserObject) { continue }
 
             # create a pscustomobject projection so we can safely tweak values
-            $Projected = $UserObject | Select-Object -Property * -ExcludeProperty $Exclude
+            $Projected = $ScriptUserObject | Select-Object -Property * -ExcludeProperty $Exclude
             Format-SentinelDates $Projected
 
             # call format-tree with defaults; always omit null/empty

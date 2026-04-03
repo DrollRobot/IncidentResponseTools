@@ -24,22 +24,16 @@ function Show-UserMFA {
 
         #region BEGIN
 
-        # if user objects not passed directly, find global
-        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
+        # constants
+        $Function = $MyInvocation.MyCommand.Name
+        $ParameterSet = $PSCmdlet.ParameterSetName
+        if ($Test -or $Script:Test) {
+            $Script:Test = $true
 
-            # get from global variables
-            $ScriptUserObjects = Get-GraphGlobalUserObjects
-        
-            # if none found, exit
-            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
-                throw "No user objects passed or found in global variables."
-            }
-        }
-        else {
-            $ScriptUserObjects = $UserObjects
+            # start stopwatch
+            $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         }
 
-        # variables
         $OutputTable = [System.Collections.Generic.List[PSCustomObject]]::new()
         $Properties = [System.Collections.Generic.Hashset[string]]::new()
         $PropertySortOrder = @(
@@ -57,15 +51,30 @@ function Show-UserMFA {
         )
         $EventDateFormat = 'MM/dd/yy hh:mm:sstt'
         $FileNameDateFormat = "yy-MM-dd_HH-mm"
+        $WorksheetName = 'MFAMethods'
 
         # colors
         $Blue = @{ ForegroundColor = 'Blue' }
-        # $Green = @{ ForegroundColor = 'Green' }
         # $Red = @{ ForegroundColor = 'Red' }
+        # $Cyan = @{ ForegroundColor = 'Cyan' }
+        # $Green = @{ ForegroundColor = 'Green' }
         # $Magenta = @{ ForegroundColor = 'Magenta' }
+        # $Yellow = @{ ForegroundColor = 'Yellow' }
 
-        # variables
-        $WorksheetName = 'MFAMethods'
+        # if user objects not passed directly, find global
+        if ( -not $UserObjects -or $UserObjects.Count -eq 0 ) {
+
+            # get from global variables
+            $ScriptUserObjects = Get-GraphGlobalUserObjects
+        
+            # if none found, exit
+            if ( -not $ScriptUserObjects -or $ScriptUserObjects.Count -eq 0 ) {
+                throw "No user objects passed or found in global variables."
+            }
+        }
+        else {
+            $ScriptUserObjects = $UserObjects
+        }
 
         # get client domain name for file output
         $DefaultDomain = Get-MgDomain | Where-Object { $_.IsDefault -eq $true }
@@ -87,14 +96,14 @@ function Show-UserMFA {
             $UserName = $UserEmail -split '@' | Select-Object -First 1
 
             # build file name
-            $XmlOutputPath = "MFAMethods_Raw_${DomainName}_${UserName}_${DateString}.xml"
+            $XmlOutputPath = "MFAMethods_${DomainName}_${UserName}_${DateString}.xml"
             $ExcelOutputPath = "MFAMethods_${DomainName}_${UserName}_${DateString}.xlsx"
 
             # build worksheet title
             $DateString = ( Get-Date ).ToString( "M/d/yy h:mmtt" ).ToLower()
             $WorksheetTitle = "MFA methods for ${UserEmail} on ${DateString}."
 
-            Write-Host @Blue "`nGetting MFA methods for: ${UserEmail}"
+            Write-Host @Blue "`n${Function}: Getting MFA methods for: ${UserEmail}"
             $Methods = Get-MgUserAuthenticationMethod -UserId $ScriptUserObject.Id -ErrorAction Stop
 
             foreach ( $Method in $Methods ) {
@@ -329,7 +338,7 @@ function Show-UserMFA {
 
             if ($Xml) {
                 # export raw data as xml
-                Write-Host @Blue "Exporting raw data to: ${XmlOutputPath}"
+                Write-Host @Blue "${Function}: Exporting raw data to: ${XmlOutputPath}"
                 $Methods | Export-CliXml -Depth 10 -Path $XmlOutputPath
             }
 
@@ -347,13 +356,13 @@ function Show-UserMFA {
                 $Workbook = $OutputTable | Select-Object $SortedProperties | Export-Excel @ExcelParams
             }
             catch {
-                Write-Error "Unable to open new Excel document."
-                if ( Get-YesNo "Try closing open files." ) {
+                Write-Error "${Function}: Unable to open new Excel document."
+                if ( Get-YesNo "${Function}: Try closing open files." ) {
                     try {
                         $Workbook = $OutputTable | Export-Excel @ExcelParams
                     }
                     catch {
-                        throw "Unable to open new Excel document. Exiting."
+                        throw "${Function}: Unable to open new Excel document. Exiting."
                     }
                 }
             }

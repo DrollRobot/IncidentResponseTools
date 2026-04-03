@@ -5,7 +5,8 @@ function Open-MailboxInOWA {
 	Opens user mailbox in OWA in a browser.
 	
 	.NOTES
-	Version: 1.0.0
+	Version: 1.1.0
+    1.1.0 - Added Clipboard option.
 	#>
     [CmdletBinding()]
     param (
@@ -15,8 +16,9 @@ function Open-MailboxInOWA {
 
         [ValidateSet( 'msedge','chrome','firefox','brave','default' )]
         [string] $Browser = 'default',
+        [switch] $Private,
 
-        [switch] $Private
+        [switch] $Clipboard
     )
 
     begin {
@@ -51,7 +53,7 @@ function Open-MailboxInOWA {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
@@ -60,7 +62,7 @@ function Open-MailboxInOWA {
 
         # verify connected to exchange
         try {
-            [void](Get-AcceptedDomain)
+            $null = Get-AcceptedDomain
         }
         catch {
             $ErrorParams = @{
@@ -74,20 +76,26 @@ function Open-MailboxInOWA {
 
     process {
 
-        foreach ( $ScriptUserObject in $ScriptUserObjects ) {
+        foreach ($ScriptUserObject in $ScriptUserObjects) {
 
             $UserEmail = $ScriptUserObject.UserPrincipalName
             $MailboxUrl = "https://outlook.office.com/mail/${UserEmail}/?offline=disabled"
 
-            Write-Host @Blue "Opening ${UserEmail}'s mailbox in web browser." | Out-Host
-            $Params = @{
-                Browser = $Browser
-                Url = $MailboxUrl
+            if ($Clipboard) {
+                $MailboxUrl | Set-Clipboard
+                Write-Host @Green "Mailbox URL for ${UserEmail} copied to clipboard." | Out-Host
             }
-            if ( $Private ) {
-                $Params['Private'] = $true
+            else {
+                Write-Host @Blue "Opening ${UserEmail}'s mailbox in web browser." | Out-Host
+                $Params = @{
+                    Browser = $Browser
+                    Url = $MailboxUrl
+                }
+                if ($Private) {
+                    $Params['Private'] = $true
+                }
+                Open-Browser @Params
             }
-            Open-Browser @Params
         }
     }
 }

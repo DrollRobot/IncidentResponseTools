@@ -215,6 +215,7 @@ function Show-SignInLogs {
             $Raw = $Log | ConvertTo-Json -Depth 10
 
             # Date/Time
+            $DateTime = $null
             if ($Log.$RawDateProperty) {
                 $DateTime = $Log.$RawDateProperty.ToLocalTime()
             }
@@ -236,20 +237,7 @@ function Show-SignInLogs {
             }
 
             # compress trust
-            $Trust = switch ( $Log.DeviceDetail.TrustType ) {
-                'Hybrid Azure AD joined' {
-                    'Hybrid'
-                }
-                'Azure AD joined' {
-                    'Az Joined'
-                }
-                'Azure AD registered' {
-                    'Az Registered'
-                }
-                default {
-                    $Log.DeviceDetail.TrustType
-                }
-            }
+            $Trust = Convert-TrustType -TrustType $Log.DeviceDetail.TrustType
 
             # add to list
             [void]$Rows.Add([PSCustomObject]@{
@@ -495,7 +483,6 @@ function Show-SignInLogs {
 
         #region FORMATTING
 
-        # FIXME implement this method rather than formatted text strings with Format-EventDateString
         # set date format 
         $FmtParams = @{
             Worksheet = $Worksheet

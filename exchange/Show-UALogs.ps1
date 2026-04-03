@@ -104,11 +104,12 @@ function Show-UALogs {
         $TitleDateFormat = "M/d/yy h:mmtt"
         $TitleEndDate = $EndDate.ToLocalTime().ToString($TitleDateFormat)
         $TitleStartDate = $StartDate.ToLocalTime().ToString($TitleDateFormat)
-        $WorksheetTitle = "Unified audit logs for ${Username}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
+        $SheetTitle = $Metadata.SheetTitle
+        $WorksheetTitle = "${SheetTitle} for ${Username}. Covers ${Days} days, ${TitleStartDate} to ${TitleEndDate}."
 
         # import alloperations csv
         $ModulePath = $PSScriptRoot
-        $AllOperationsFileName = 'unified_audit_log-all_operations.csv'
+        $AllOperationsFileName = 'unified_audit_log-all_operations.csv' # FIXME convert to using xlsx
         $OperationsCsvPath = Join-Path -Path $ModulePath -ChildPath "\unified_audit_log-data\${AllOperationsFileName}"
         $OperationsCsvData = Import-Csv -Path $OperationsCsvPath
 
@@ -321,6 +322,15 @@ function Show-UALogs {
                 'AzureActiveDirectory Update user.' {
                     $EventObject = Resolve-AzureActiveDirectoryUpdateUser -Log $Log
                 }
+                'AzureActiveDirectoryStsLogon UserLoggedIn' {
+                    $EventObject = Resolve-AzureActiveDirectoryLogin -Log $Log
+                }
+                'AzureActiveDirectoryStsLogon UserLoggedOff' {
+                    $EventObject = Resolve-AzureActiveDirectoryLogin -Log $Log
+                }
+                'AzureActiveDirectoryStsLogon UserLoginFailed' {
+                    $EventObject = Resolve-AzureActiveDirectoryLogin -Log $Log
+                }
                 'ExchangeAdmin New-InboxRule' {
                     $EventObject = Resolve-ExchangeAdminInboxRule -Log $Log
                 }
@@ -394,11 +404,17 @@ function Show-UALogs {
                 }
             }
 
+            # Date/Time
+            $DateTime = $null
+            if ($Log.$RawDateProperty) {
+                $DateTime = $Log.$RawDateProperty.ToLocalTime()
+            }
+
             # add to list
             [void]$Rows.Add([PSCustomObject]@{
                 Raw = $Raw
                 # Tree = $Log | Format-Tree -Depth 10 | Out-String # need to figure out how to output to pipeline, not host
-                $DateColumnHeader = Format-EventDateString $Log.$RawDateProperty  
+                $DateColumnHeader = $DateTime
                 UserIds = $UserIds
                 Workload = $Log.AuditData.Workload
                 RecordType = $Log.RecordType
@@ -597,9 +613,6 @@ function Show-UALogs {
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Raw' } ).Id 
         $Worksheet.Column($Column).Width = 8
 
-        # $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq 'Tree' } ).Id 
-        # $Worksheet.Column($Column).Width = 12
-
         $Column = ( $Worksheet.Tables[0].Columns | Where-Object { $_.Name -eq $DateColumnHeader } ).Id 
         $Worksheet.Column($Column).Width = 26
 
@@ -623,14 +636,13 @@ function Show-UALogs {
 
         #region FORMATTING
 
-        # FIXME implement this method rather than formatted text strings with Format-EventDateString
-        # # set date format 
-        # $FmtParams = @{
-        #     Worksheet = $Worksheet
-        #     Range = "B:B"
-        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
-        # }
-        # Set-Format @FmtParams
+        # set date format 
+        $FmtParams = @{
+            Worksheet = $Worksheet
+            Range = "B:B"
+            NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        }
+        Set-Format @FmtParams
 
         # set text wrapping on specific columns
         $WrappingParams = @{
@@ -639,12 +651,6 @@ function Show-UALogs {
             WrapText  = $true
         }
         Set-ExcelRange @WrappingParams
-        # $WrappingParams = @{
-        #     Worksheet = $Worksheet
-        #     Range     = "${IpAddressColumn}${TableStartRow}:${IpAddressColumn}${EndRow}"
-        #     WrapText  = $true
-        # }
-        # Set-ExcelRange @WrappingParams
 
         # set font and size
         $SetParams = @{

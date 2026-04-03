@@ -78,10 +78,6 @@ function Show-EntraAuditLogs {
 
         # import AppOwnerOrganizationId information
         $CsvPath = Join-Path -Path $ModulePath -ChildPath 'AppOwnerOrganizationId.csv'
-        <#
-        TESTING
-        $CsvPath = Join-Path -Path $Global:MyModulesFolder -ChildPath '\GraphLogs\AppOwnerOrganizationId.csv'
-        #>
         if ( Test-Path -Path $CsvPath ) {
             $AppOwnerTable = Import-Csv -Path $CsvPath
         }
@@ -145,10 +141,14 @@ function Show-EntraAuditLogs {
             $Row | Add-Member @AddParams
 
             # DateTime
+            $DateTime = $null
+            if ($Log.$RawDateProperty) {
+                $DateTime = $Log.$RawDateProperty.ToLocalTime()
+            }
             $AddParams = @{
                 MemberType  = 'NoteProperty'
                 Name        = $DateColumnHeader
-                Value       = Format-EventDateString $Log.$RawDateProperty
+                Value       = $DateTime
             }
             $Row | Add-Member @AddParams
 
@@ -519,14 +519,13 @@ function Show-EntraAuditLogs {
 
         #region FORMATTING
 
-        # FIXME implement this method rather than formatted text strings with Format-EventDateString
-        # # set date format 
-        # $FmtParams = @{
-        #     Worksheet = $Worksheet
-        #     Range = "B:B"
-        #     NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
-        # }
-        # Set-Format @FmtParams
+        # set date format 
+        $FmtParams = @{
+            Worksheet = $Worksheet
+            Range = "B:B"
+            NumberFormat  = 'm/d/yyyy h:mm:ss AM/PM'
+        }
+        Set-Format @FmtParams
 
         # set font and size
         $SetParams = @{

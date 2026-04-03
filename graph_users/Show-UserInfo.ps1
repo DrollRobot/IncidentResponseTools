@@ -44,9 +44,9 @@ function Show-UserInfo {
     process {
 
         # overwrite global $Userobjects so we can add the full user objects with all properties
-        $Global:UserObjects = [System.Collections.Generic.List[psobject]]::new()
+        $Global:IRT_UserObjects = [System.Collections.Generic.List[psobject]]::new()
 
-        foreach ( $ScriptUserObject in $ScriptUserObjects ) {
+        foreach ($ScriptUserObject in $ScriptUserObjects) {
 
             # variables
             $UserEmail = $ScriptUserObject.UserPrincipalName
@@ -56,10 +56,7 @@ function Show-UserInfo {
             $ScriptUserObject = Get-FullUserObject -UserObject $ScriptUserObject
 
             # copy full user object to global variables
-            $Global:UserObjects.Add($ScriptUserObjects)
-            if (($ScriptUserObjects | Measure-Object).Count -eq 1) {
-                $Global:UserObject = $ScriptUserObject
-            }
+            $Global:IRT_UserObjects.Add($ScriptUserObject)
             
             Write-Host @Blue "`nShowing user properties for: ${UserEmail}"
             $ScriptUserObject | Show-GraphUserTree | Out-Host

@@ -9,7 +9,8 @@ function Get-SignInLogs {
 	Downloads user sign in logs.	
 	
 	.NOTES
-	Version: 1.1.1
+	Version: 1.1.2
+    1.1.2 - Added graceful exit when no logs are found.
     1.1.1 - Added test timers.
 	#>
     [CmdletBinding(DefaultParameterSetName = 'UserObjects')]
@@ -21,8 +22,8 @@ function Get-SignInLogs {
         [Parameter(ParameterSetName='AllUsers')]
         [switch] $AllUsers,
 
-        # [Parameter(ParameterSetName='IpAddresses')]
-        # [string[]] $IpAddresses, # add option to search by ip address FIXME
+        [Parameter(ParameterSetName='IpAddresses')]
+        [string[]] $IpAddresses, # FIXME works, but need to fix metadata. no username means incorrect title in spreadsheet
 
         # relative date range
         [int] $Days, # default value set at #DEFAULTDAYS
@@ -83,11 +84,21 @@ function Get-SignInLogs {
                     if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                         $ErrorParams = @{
                             Category    = 'InvalidArgument'
-                            Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                            Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                             ErrorAction = 'Stop'
                         }
                         Write-Error @ErrorParams
                     }
+                }
+            }
+            'IpAddresses' {
+                $ScriptUserObjects = [System.Collections.Generic.List[pscustomobject]]::new()
+                foreach ($IpAddress in $IpAddresses) {
+                    [void]$ScriptUserObjects.Add(
+                        [pscustomobject]@{
+                            UserPrincipalName = $IpAddress
+                        }
+                    )
                 }
             }
             'AllUsers' {
@@ -198,6 +209,9 @@ function Get-SignInLogs {
                     $UserEmail = $ScriptUserObject.UserPrincipalName
                     $UserName = $UserEmail -split '@' | Select-Object -First 1
                     $FilterStrings.Add( "UserId eq '$($ScriptUserObject.Id)'" )
+                }
+                'IpAddresses' {
+                    $FilterStrings.Add( "ipAddress eq '$($ScriptUserObject.UserPrincipalName)'" )
                 }
                 'AllUsers' {
                     $UserName = 'AllUsers'
@@ -310,6 +324,11 @@ function Get-SignInLogs {
             if ($Script:Test) {
                 $ElapsedString = ($StopWatch.Elapsed - $TimerStart).ToString('mm\:ss')
                 Write-Host @Yellow "${Function}: ${TestText} took ${ElapsedString}" | Out-Host
+            }
+
+            if (($Logs | Measure-Object).Count -eq 0 ) {
+                Write-Host @Red "${Function}: No logs found for ${UserEmail} for past ${Days} days. Exiting." | Out-Host
+                return
             }
 
             # add metadata to results

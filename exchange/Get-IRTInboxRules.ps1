@@ -203,7 +203,8 @@ function Get-IRTInboxRules {
                 'compromise'
                 'hack'
                 'stolen'
-                'conversation history'
+                'Conversation History'
+                'RSS Feeds'
             )
             foreach ( $String in $Strings ) {
 

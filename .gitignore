@@ -1,3 +1,11 @@
 graph_applications/known_serviceprincipals/*
+debug/
 
-IncidentResponseTools.code-workspace
+# investigation file patterns
+*.xlsx
+*investigation
+*.xml
+
+# ide files
+.vscode/
+*.code-workspace

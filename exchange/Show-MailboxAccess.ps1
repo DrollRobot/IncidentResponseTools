@@ -1,5 +1,7 @@
-New-Alias -Name 'ShowAccess' -Value 'Show-MailboxAccess' -Force
 New-Alias -Name 'MailboxAccess' -Value 'Show-MailboxAccess' -Force
+New-Alias -Name 'ShowAccess' -Value 'Show-MailboxAccess' -Force
+New-Alias -Name 'ShowFullAccess' -Value 'Show-MailboxAccess' -Force
+
 function Show-MailboxAccess {
     <#
 	.SYNOPSIS
@@ -56,7 +58,7 @@ function Show-MailboxAccess {
             if (($ScriptUserObjects | Measure-Object).Count -eq 0) {
                 $ErrorParams = @{
                     Category    = 'InvalidArgument'
-                    Message     = "No -UserObjects argument used, no `$Global:UserObjects present."
+                    Message     = "No -UserObjects argument used, no `$Global:IRT_UserObjects present."
                     ErrorAction = 'Stop'
                 }
                 Write-Error @ErrorParams
